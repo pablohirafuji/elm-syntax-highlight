@@ -1,0 +1,41 @@
+/* Monokai inspired theme */
+.elmsh {
+	background: #23241F;
+	color: #F8F8F2;
+}
+
+.elmshBold {
+	font-weight: bold;
+}
+
+.elmshItalic {
+	font-style: italic;
+}
+
+.elmshColor1 {
+	color: #75715E;
+}
+.elmshColor2 {
+	color: #E6DB74;
+}
+
+.elmshColor3 {
+	color: #F92672;
+}
+
+.elmshColor4 {
+	color: #66D9EF;
+}
+
+.elmshColor5 {
+	color: #A6E22E;
+}
+
+.elmshColor6 {
+	color: #AE81FF;
+}
+
+.elmshColor7 {
+	color: #FD971F;
+}
+
