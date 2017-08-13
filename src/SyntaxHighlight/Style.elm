@@ -3,8 +3,8 @@ module SyntaxHighlight.Style exposing (..)
 
 type alias Style =
     { color : Color
-    , isItalic : Bool
-    , isBold : Bool
+    , isEmphasis : Bool
+    , isStrong : Bool
     }
 
 
@@ -26,30 +26,30 @@ type Color
 normal : Color -> Style
 normal color =
     { color = color
-    , isItalic = False
-    , isBold = False
+    , isEmphasis = False
+    , isStrong = False
     }
 
 
-italic : Color -> Style
-italic color =
+emphasis : Color -> Style
+emphasis color =
     { color = color
-    , isItalic = True
-    , isBold = False
+    , isEmphasis = True
+    , isStrong = False
     }
 
 
-bold : Color -> Style
-bold color =
+strong : Color -> Style
+strong color =
     { color = color
-    , isItalic = False
-    , isBold = True
+    , isEmphasis = False
+    , isStrong = True
     }
 
 
-italicBold : Color -> Style
-italicBold color =
+strongEmphasis : Color -> Style
+strongEmphasis color =
     { color = color
-    , isItalic = True
-    , isBold = True
+    , isEmphasis = True
+    , isStrong = True
     }

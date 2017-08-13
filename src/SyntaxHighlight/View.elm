@@ -15,15 +15,15 @@ toHtml result =
 
 
 toElement : ( Style, String ) -> Html msg
-toElement ( { color, isItalic, isBold }, str ) =
-    if color == Default && not isItalic && not isBold then
+toElement ( { color, isEmphasis, isStrong }, str ) =
+    if color == Default && not isEmphasis && not isStrong then
         text str
     else
         span
             [ classList
                 [ ( "elmsh" ++ toString color, color /= Default )
-                , ( "elmshItalic", isItalic )
-                , ( "elmshBold", isBold )
+                , ( "elmshEmphasis", isEmphasis )
+                , ( "elmshStrong", isStrong )
                 ]
             ]
             [ text str ]

@@ -3,7 +3,7 @@ module SyntaxHighlight.Language.Elm exposing (parse)
 import Char
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Style exposing (Style, Color(..), normal, italic)
+import SyntaxHighlight.Style exposing (Style, Color(..), normal, emphasis)
 import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
 
 
@@ -519,7 +519,7 @@ syntaxToStyle syntax =
             ( normal Color5, str )
 
         TypeSignature str ->
-            ( italic Color4, str )
+            ( emphasis Color4, str )
 
         Space str ->
             ( normal Default, str )

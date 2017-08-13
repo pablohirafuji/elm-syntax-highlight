@@ -2,7 +2,7 @@ module SyntaxHighlight.Language.Javascript exposing (parse)
 
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Style exposing (Style, Color(..), normal, italic)
+import SyntaxHighlight.Style exposing (Style, Color(..), normal, emphasis)
 import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
 
 
@@ -390,7 +390,7 @@ syntaxToStyle syntaxType =
             normal Color3
 
         DeclarationKeyword ->
-            italic Color4
+            emphasis Color4
 
         FunctionEval ->
             normal Color4
