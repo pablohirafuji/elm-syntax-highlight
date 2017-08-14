@@ -1,6 +1,7 @@
 module SyntaxHighlight.Helpers exposing (..)
 
-import Parser exposing (Parser, (|.), oneOf, Count(..), symbol, ignore, zeroOrMore, lazy, fail)
+import Char
+import Parser exposing (Parser, (|.), oneOf, keep, Count(..), oneOrMore, symbol, ignore, zeroOrMore, lazy, fail)
 
 
 isWhitespace : Char -> Bool
@@ -16,6 +17,16 @@ isSpace c =
 isLineBreak : Char -> Bool
 isLineBreak c =
     c == '\n'
+
+
+number : Parser ()
+number =
+    ignore oneOrMore isNumber
+
+
+isNumber : Char -> Bool
+isNumber c =
+    Char.isDigit c || c == '.'
 
 
 type alias Delimited =

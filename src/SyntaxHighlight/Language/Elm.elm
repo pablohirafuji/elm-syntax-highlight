@@ -11,7 +11,7 @@ import Char
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
 import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal, emphasis)
-import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
+import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, number, delimited)
 
 
 type alias Syntax =
@@ -30,6 +30,7 @@ type SyntaxType
     | TypeSignature
     | Space
     | LineBreak
+    | Number
 
 
 parse : String -> Result Error (List Fragment)
@@ -267,6 +268,9 @@ functionBodyContent =
         [ space
         , string
         , comment
+        , number
+            |> source
+            |> map ((,) Number)
         , symbol "()"
             |> map (always ( Capitalized, "()" ))
         , basicSymbol
@@ -542,3 +546,6 @@ syntaxToFragment ( syntaxType, text ) =
 
         LineBreak ->
             normal Default text
+
+        Number ->
+            normal Color6 text

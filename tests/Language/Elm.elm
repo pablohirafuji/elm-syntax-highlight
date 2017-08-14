@@ -41,6 +41,11 @@ suite =
                 Elm.toSyntax "    case maybe of\n        Just str -> str\n        Nothing -> str"
                     |> Expect.equal
                         (Result.Ok [ ( Space, "    " ), ( Keyword, "case" ), ( Space, " " ), ( Normal, "maybe" ), ( Space, " " ), ( Keyword, "of" ), ( LineBreak, "\n" ), ( Space, "        " ), ( Capitalized, "Just" ), ( Space, " " ), ( Normal, "str" ), ( Space, " " ), ( BasicSymbol, "->" ), ( Space, " " ), ( Normal, "str" ), ( LineBreak, "\n" ), ( Space, "        " ), ( Capitalized, "Nothing" ), ( Space, " " ), ( BasicSymbol, "->" ), ( Space, " " ), ( Normal, "str" ) ])
+        , test "Numbers" <|
+            \() ->
+                Elm.toSyntax "math = (3+4.453) / 5 * 4.4"
+                    |> Expect.equal
+                        (Result.Ok [ ( Function, "math" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( BasicSymbol, "(" ), ( Number, "3" ), ( BasicSymbol, "+" ), ( Number, "4.453" ), ( BasicSymbol, ")" ), ( Space, " " ), ( BasicSymbol, "/" ), ( Space, " " ), ( Number, "5" ), ( Space, " " ), ( BasicSymbol, "*" ), ( Space, " " ), ( Number, "4.4" ) ])
         , test "String literal: Single quote" <|
             \() ->
                 Elm.toSyntax "char = 'c'"
