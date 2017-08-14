@@ -1,4 +1,11 @@
-module SyntaxHighlight.Language.Elm exposing (parse)
+module SyntaxHighlight.Language.Elm
+    exposing
+        ( parse
+          -- Exposing just for tests purpose
+        , toSyntax
+          -- Exposing just for tests purpose
+        , SyntaxType(..)
+        )
 
 import Char
 import Set exposing (Set)
@@ -27,8 +34,13 @@ type SyntaxType
 
 parse : String -> Result Error (List Fragment)
 parse =
-    Parser.run (lineStart functionBody [])
+    toSyntax
         >> Result.map (List.map syntaxToFragment)
+
+
+toSyntax : String -> Result Error (List Syntax)
+toSyntax =
+    Parser.run (lineStart functionBody [])
 
 
 lineStart : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
