@@ -1,10 +1,11 @@
-module SyntaxHighlight.Style exposing (..)
+module SyntaxHighlight.Fragment exposing (..)
 
 
-type alias Style =
+type alias Fragment =
     { color : Color
     , isEmphasis : Bool
     , isStrong : Bool
+    , text : String
     }
 
 
@@ -23,33 +24,37 @@ type Color
     | Color7 -- Argument, parameter
 
 
-normal : Color -> Style
-normal color =
+normal : Color -> String -> Fragment
+normal color text =
     { color = color
     , isEmphasis = False
     , isStrong = False
+    , text = text
     }
 
 
-emphasis : Color -> Style
-emphasis color =
+emphasis : Color -> String -> Fragment
+emphasis color text =
     { color = color
     , isEmphasis = True
     , isStrong = False
+    , text = text
     }
 
 
-strong : Color -> Style
-strong color =
+strong : Color -> String -> Fragment
+strong color text =
     { color = color
     , isEmphasis = False
     , isStrong = True
+    , text = text
     }
 
 
-strongEmphasis : Color -> Style
-strongEmphasis color =
+strongEmphasis : Color -> String -> Fragment
+strongEmphasis color text =
     { color = color
     , isEmphasis = True
     , isStrong = True
+    , text = text
     }

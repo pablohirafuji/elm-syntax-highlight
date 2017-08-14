@@ -2,7 +2,7 @@ module SyntaxHighlight.Language.Javascript exposing (parse)
 
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Style exposing (Style, Color(..), normal, emphasis)
+import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal, emphasis)
 import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
 
 
@@ -22,10 +22,10 @@ type SyntaxType
     | Param
 
 
-parse : String -> Result Error (List ( Style, String ))
+parse : String -> Result Error (List Fragment)
 parse =
     Parser.run (mainLoop [])
-        >> Result.map (List.map (Tuple.mapFirst syntaxToStyle))
+        >> Result.map (List.map syntaxToFragment)
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
@@ -374,32 +374,32 @@ end revSyntaxList =
         |> map (\_ -> List.reverse revSyntaxList)
 
 
-syntaxToStyle : SyntaxType -> Style
-syntaxToStyle syntaxType =
+syntaxToFragment : Syntax -> Fragment
+syntaxToFragment ( syntaxType, text ) =
     case syntaxType of
         Normal ->
-            normal Default
+            normal Default text
 
         Comment ->
-            normal Color1
+            normal Color1 text
 
         String ->
-            normal Color2
+            normal Color2 text
 
         Keyword ->
-            normal Color3
+            normal Color3 text
 
         DeclarationKeyword ->
-            emphasis Color4
+            emphasis Color4 text
 
         FunctionEval ->
-            normal Color4
+            normal Color4 text
 
         Function ->
-            normal Color5
+            normal Color5 text
 
         LiteralKeyword ->
-            normal Color6
+            normal Color6 text
 
         Param ->
-            normal Color7
+            normal Color7 text

@@ -2,7 +2,7 @@ module SyntaxHighlight.Language.Xml exposing (..)
 
 import Char
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Style exposing (Style, Color(..), normal)
+import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal)
 import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
 
 
@@ -18,10 +18,10 @@ type SyntaxType
     | AttributeValue
 
 
-parse : String -> Result Error (List ( Style, String ))
+parse : String -> Result Error (List Fragment)
 parse =
     Parser.run (mainLoop [])
-        >> Result.map (List.map (Tuple.mapFirst syntaxToStyle))
+        >> Result.map (List.map syntaxToFragment)
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
@@ -201,20 +201,20 @@ end revSyntaxList =
         |> map (\_ -> List.reverse revSyntaxList)
 
 
-syntaxToStyle : SyntaxType -> Style
-syntaxToStyle syntaxType =
+syntaxToFragment : Syntax -> Fragment
+syntaxToFragment ( syntaxType, text ) =
     case syntaxType of
         Normal ->
-            normal Default
+            normal Default text
 
         Comment ->
-            normal Color1
+            normal Color1 text
 
         Tag ->
-            normal Color3
+            normal Color3 text
 
         Attribute ->
-            normal Color5
+            normal Color5 text
 
         AttributeValue ->
-            normal Color2
+            normal Color2 text

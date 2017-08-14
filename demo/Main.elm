@@ -6,7 +6,8 @@ import Html.Attributes exposing (defaultValue, id, class, value, spellcheck, sel
 import Html.Lazy exposing (lazy)
 import Html.Events exposing (onInput)
 import Json.Decode as Json
-import SyntaxHighlight
+import SyntaxHighlight as SH
+import SyntaxHighlight.Fragment exposing (Fragment)
 import AnimationFrame
 
 
@@ -156,23 +157,6 @@ update msg ({ elm, xml, javascript } as model) =
             , Cmd.none
             )
 
-        -- Previous attempt using Dom.Scroll to scroll the render view
-        -- It had problem scrolling when the width of the render was
-        -- bigger then the textarea (when the scrollbars appeared).
-        --, if model.currentScroll == model.futureScroll then
-        --    Cmd.none
-        --  else
-        --    Task.attempt (always NoOp)
-        --        (Task.sequence
-        --            [ Dom.Scroll.toY
-        --                ("render" ++ toString model.language)
-        --                (toFloat model.futureScroll.top)
-        --            , Dom.Scroll.toX
-        --                ("render" ++ toString model.language)
-        --                (toFloat model.futureScroll.left)
-        --            ]
-        --        )
-        --)
         SetLanguage lang ->
             let
                 ( langType, langScroll ) =
@@ -205,9 +189,9 @@ view ({ language } as model) =
             , option [ selected (language == Xml) ] [ text "Xml" ]
             , option [ selected (language == Javascript) ] [ text "Javascript" ]
             ]
-        , viewLanguage Elm language model.elm SyntaxHighlight.elm
-        , viewLanguage Javascript language model.javascript SyntaxHighlight.javascript
-        , viewLanguage Xml language model.xml SyntaxHighlight.xml
+        , viewLanguage Elm language model.elm toHtmlElm
+        , viewLanguage Javascript language model.javascript toHtmlJavascript
+        , viewLanguage Xml language model.xml toHtmlXml
         ]
 
 
@@ -239,7 +223,8 @@ viewLanguage lang curLang langModel parser =
                   )
                 ]
             ]
-            [ lazy parser langModel.code ]
+            [ lazy parser langModel.code
+            ]
         , textarea
             [ defaultValue langModel.code
             , class "textarea"
@@ -253,3 +238,37 @@ viewLanguage lang curLang langModel parser =
             ]
             []
         ]
+
+
+toHtml : (String -> Result x (List Fragment)) -> String -> Html Msg
+toHtml parser str =
+    parser str
+        |> Result.map SH.toHtml
+        |> Result.mapError (\x -> text (toString x))
+        |> (\result ->
+                case result of
+                    Result.Ok a ->
+                        a
+
+                    Result.Err x ->
+                        x
+           )
+
+
+
+-- Helpers function for Html.Lazy.lazy
+
+
+toHtmlElm : String -> Html Msg
+toHtmlElm str =
+    toHtml SH.elm str
+
+
+toHtmlXml : String -> Html Msg
+toHtmlXml str =
+    toHtml SH.xml str
+
+
+toHtmlJavascript : String -> Html Msg
+toHtmlJavascript str =
+    toHtml SH.javascript str

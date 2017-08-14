@@ -1,23 +1,21 @@
-module SyntaxHighlight.View exposing (..)
+module SyntaxHighlight.View exposing (toHtml)
 
 import Html exposing (Html, text, span, br, code)
 import Html.Attributes exposing (classList)
-import Parser exposing (Error)
-import SyntaxHighlight.Style exposing (..)
+import SyntaxHighlight.Fragment exposing (..)
 
 
-toHtml : Result Error (List ( Style, String )) -> Html msg
-toHtml result =
-    result
-        |> Result.map (List.map toElement >> code [])
-        |> Result.mapError (\x -> code [] [ text (toString x) ])
-        |> extractResult
+toHtml : List Fragment -> Html msg
+toHtml fragment =
+    fragment
+        |> List.map toElement
+        |> code []
 
 
-toElement : ( Style, String ) -> Html msg
-toElement ( { color, isEmphasis, isStrong }, str ) =
+toElement : Fragment -> Html msg
+toElement { color, isEmphasis, isStrong, text } =
     if color == Default && not isEmphasis && not isStrong then
-        text str
+        Html.text text
     else
         span
             [ classList
@@ -26,14 +24,4 @@ toElement ( { color, isEmphasis, isStrong }, str ) =
                 , ( "elmshStrong", isStrong )
                 ]
             ]
-            [ text str ]
-
-
-extractResult : Result a a -> a
-extractResult result =
-    case result of
-        Result.Ok a ->
-            a
-
-        Result.Err a ->
-            a
+            [ Html.text text ]
