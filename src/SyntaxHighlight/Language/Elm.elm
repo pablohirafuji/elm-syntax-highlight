@@ -9,7 +9,7 @@ module SyntaxHighlight.Language.Elm
 
 import Char
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit)
 import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal, emphasis)
 import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, number, delimited)
 
@@ -31,6 +31,7 @@ type SyntaxType
     | Space
     | LineBreak
     | Number
+    | Infix
 
 
 parse : String -> Result Error (List Fragment)
@@ -49,7 +50,8 @@ lineStart continueFunction revSyntaxList =
     oneOf
         [ moduleDeclaration "module" revSyntaxList
         , moduleDeclaration "import" revSyntaxList
-        , portDeclaration revSyntaxList
+        , Parser.keyword "port"
+            |> andThen (\_ -> portDeclaration revSyntaxList)
         , oneOf [ space, comment ]
             |> andThen (\n -> continueFunction (n :: revSyntaxList))
         , lineBreak
@@ -63,91 +65,134 @@ lineStart continueFunction revSyntaxList =
 
 
 
--- Module Declaration Syntax
+-- Module Declaration
 
 
 moduleDeclaration : String -> List Syntax -> Parser (List Syntax)
 moduleDeclaration keyword revSyntaxList =
     Parser.keyword keyword
-        |> andThen
-            (\_ ->
-                oneOf
-                    [ oneOf
-                        [ space
-                        , comment
-                        , lineBreak
-                        ]
-                        |> andThen
-                            (\n ->
-                                moduleDeclarationLoop 0
-                                    (n :: ( Keyword, keyword ) :: revSyntaxList)
-                            )
-                    , end (( Keyword, keyword ) :: revSyntaxList)
-                    , keep zeroOrMore isVariableChar
-                        |> andThen
-                            (\str ->
-                                functionSignature
-                                    (( Function, (keyword ++ str) ) :: revSyntaxList)
-                            )
-                    ]
-            )
+        |> andThen (\_ -> moduleDeclarationHelp keyword revSyntaxList)
 
 
-moduleDeclarationLoop : Int -> List Syntax -> Parser (List Syntax)
-moduleDeclarationLoop nestLevel revSyntaxList =
-    let
-        mdl nestLevel_ head =
-            moduleDeclarationLoop nestLevel_ (head :: revSyntaxList)
-    in
-        oneOf
-            [ lineBreak
-                |> andThen (\n -> lineStart (moduleDeclarationLoop nestLevel) (n :: revSyntaxList))
-            , symbol "("
-                |> andThen (\_ -> mdl (nestLevel + 1) ( Normal, "(" ))
-            , symbol ")"
-                |> andThen (\_ -> mdl (max 0 (nestLevel - 1)) ( Normal, ")" ))
-            , moduleDeclarationContent nestLevel
-                |> andThen (mdl nestLevel)
-            , end revSyntaxList
+moduleDeclarationHelp : String -> List Syntax -> Parser (List Syntax)
+moduleDeclarationHelp keyword revSyntaxList =
+    oneOf
+        [ oneOf
+            [ space
+            , comment
+            , lineBreak
             ]
+            |> andThen
+                (\n ->
+                    modDecLoop
+                        (n :: ( Keyword, keyword ) :: revSyntaxList)
+                )
+        , end (( Keyword, keyword ) :: revSyntaxList)
+        , keep zeroOrMore isVariableChar
+            |> andThen
+                (\str ->
+                    functionSignature
+                        (( Function, keyword ++ str ) :: revSyntaxList)
+                )
+        ]
 
 
-moduleDeclarationContent : Int -> Parser Syntax
-moduleDeclarationContent nestLevel =
-    if nestLevel == 1 then
-        let
-            isSpecialChar c =
-                isWhitespace c || c == '(' || c == ')' || c == ',' || c == '.' || c == '-'
-        in
-            oneOf
-                [ space
-                , comment
-                , keep oneOrMore (\c -> c == '-' || c == ',' || c == '.')
-                    |> map ((,) Normal)
-                , source
-                    (ignore (Exactly 1) Char.isUpper
-                        |. ignore zeroOrMore (not << isSpecialChar)
-                    )
-                    |> map ((,) TypeSignature)
-                , keep oneOrMore (not << isSpecialChar)
-                    |> map ((,) Function)
-                ]
-    else
-        let
-            isSpecialChar c =
-                isWhitespace c || c == '(' || c == ')' || c == '-'
-        in
-            oneOf
-                [ space
-                , comment
-                , symbol "-" |> map (\_ -> ( Normal, "-" ))
-                , Parser.keyword "exposing"
-                    |> map (\_ -> ( Keyword, "exposing" ))
-                , Parser.keyword "as"
-                    |> map (\_ -> ( Keyword, "as" ))
-                , keep oneOrMore (not << isSpecialChar)
-                    |> map ((,) Normal)
-                ]
+modDecLoop : List Syntax -> Parser (List Syntax)
+modDecLoop revSyntaxList =
+    oneOf
+        [ lineBreak
+            |> andThen (\n -> lineStart modDecLoop (n :: revSyntaxList))
+        , symbol "("
+            |> map (always ( Normal, "(" ))
+            |> andThen (\n -> modDecParentheses (n :: revSyntaxList))
+        , oneOf
+            [ space
+            , comment
+            , commentChar |> map ((,) Normal)
+            , Parser.keyword "exposing"
+                |> map (always ( Keyword, "exposing" ))
+            , Parser.keyword "as"
+                |> map (always ( Keyword, "as" ))
+            , keep oneOrMore (not << mdlIsSpecialChar)
+                |> map ((,) Normal)
+            ]
+            |> andThen (\n -> modDecLoop (n :: revSyntaxList))
+        , end revSyntaxList
+        ]
+
+
+mdlIsSpecialChar : Char -> Bool
+mdlIsSpecialChar c =
+    isWhitespace c || isCommentChar c || c == '('
+
+
+modDecParentheses : List Syntax -> Parser (List Syntax)
+modDecParentheses revSyntaxList =
+    oneOf
+        [ lineBreak
+            |> andThen (\n -> lineStart modDecParentheses (n :: revSyntaxList))
+        , symbol ")"
+            |> map (always ( Normal, ")" ))
+            |> andThen (\n -> modDecLoop (n :: revSyntaxList))
+        , oneOf
+            [ space
+            , comment
+            , infixParser
+            , commentChar |> map ((,) Normal)
+            , keep oneOrMore (\c -> c == ',' || c == '.')
+                |> map ((,) Normal)
+            , (ignore (Exactly 1) Char.isUpper
+                |. ignore zeroOrMore (not << mdpIsSpecialChar)
+              )
+                |> source
+                |> map ((,) TypeSignature)
+            , keep oneOrMore (not << mdpIsSpecialChar)
+                |> map ((,) Function)
+            ]
+            |> andThen (\n -> modDecParentheses (n :: revSyntaxList))
+        , symbol "("
+            |> map (always ( Normal, "(" ))
+            |> andThen (\n -> modDecParNest 0 (n :: revSyntaxList))
+        , end revSyntaxList
+        ]
+
+
+mdpIsSpecialChar : Char -> Bool
+mdpIsSpecialChar c =
+    isWhitespace c || isCommentChar c || c == '(' || c == ')' || c == ',' || c == '.'
+
+
+modDecParNest : Int -> List Syntax -> Parser (List Syntax)
+modDecParNest nestLevel revSyntaxList =
+    oneOf
+        [ lineBreak
+            |> andThen (\n -> lineStart (modDecParNest nestLevel) (n :: revSyntaxList))
+        , symbol "("
+            |> map (always ( Normal, "(" ))
+            |> andThen (\n -> modDecParNest (nestLevel + 1) (n :: revSyntaxList))
+        , symbol ")"
+            |> map (always ( Normal, ")" ))
+            |> andThen
+                (\n ->
+                    if nestLevel == 0 then
+                        modDecParentheses (n :: revSyntaxList)
+                    else
+                        modDecParNest (max 0 (nestLevel - 1)) (n :: revSyntaxList)
+                )
+        , oneOf
+            [ comment
+            , commentChar |> map ((,) Normal)
+            , keep oneOrMore (not << mdpnIsSpecialChar)
+                |> map ((,) Normal)
+            ]
+            |> andThen (\n -> modDecParNest nestLevel (n :: revSyntaxList))
+        , end revSyntaxList
+        ]
+
+
+mdpnIsSpecialChar : Char -> Bool
+mdpnIsSpecialChar c =
+    isLineBreak c || isCommentChar c || c == '(' || c == ')'
 
 
 
@@ -156,25 +201,21 @@ moduleDeclarationContent nestLevel =
 
 portDeclaration : List Syntax -> Parser (List Syntax)
 portDeclaration revSyntaxList =
-    Parser.keyword "port"
-        |> andThen
-            (\_ ->
-                oneOf
-                    [ oneOf
-                        [ space
-                        , comment
-                        , lineBreak
-                        ]
-                        |> andThen (\n -> portLoop (n :: ( Keyword, "port" ) :: revSyntaxList))
-                    , end (( Keyword, "port" ) :: revSyntaxList)
-                    , keep zeroOrMore isVariableChar
-                        |> andThen
-                            (\str ->
-                                functionSignature
-                                    (( Function, ("port" ++ str) ) :: revSyntaxList)
-                            )
-                    ]
-            )
+    oneOf
+        [ oneOf
+            [ space
+            , comment
+            , lineBreak
+            ]
+            |> andThen (\n -> portLoop (n :: ( Keyword, "port" ) :: revSyntaxList))
+        , end (( Keyword, "port" ) :: revSyntaxList)
+        , keep zeroOrMore isVariableChar
+            |> andThen
+                (\str ->
+                    functionSignature
+                        (( Function, ("port" ++ str) ) :: revSyntaxList)
+                )
+        ]
 
 
 portLoop : List Syntax -> Parser (List Syntax)
@@ -273,6 +314,7 @@ functionBodyContent =
             |> map ((,) Number)
         , symbol "()"
             |> map (always ( Capitalized, "()" ))
+        , infixParser
         , basicSymbol
             |> map ((,) BasicSymbol)
         , groupSymbol
@@ -288,15 +330,13 @@ functionBodyContent =
 
 space : Parser Syntax
 space =
-    ignore oneOrMore isSpace
-        |> source
+    keep oneOrMore isSpace
         |> map ((,) Space)
 
 
 lineBreak : Parser Syntax
 lineBreak =
-    ignore oneOrMore isLineBreak
-        |> source
+    keep oneOrMore isLineBreak
         |> map ((,) LineBreak)
 
 
@@ -431,6 +471,49 @@ weirdText =
 
 
 
+-- Infix
+
+
+infixParser : Parser Syntax
+infixParser =
+    delayedCommit (symbol "(")
+        (delayedCommit (ignore oneOrMore isInfixChar) (symbol ")"))
+        |> source
+        |> map ((,) Infix)
+
+
+isInfixChar : Char -> Bool
+isInfixChar c =
+    Set.member c infixSet
+
+
+infixSet : Set Char
+infixSet =
+    Set.fromList
+        [ '+'
+        , '-'
+        , '/'
+        , '*'
+        , '='
+        , '.'
+        , '$'
+        , '<'
+        , '>'
+        , ':'
+        , '&'
+        , '|'
+        , '^'
+        , '?'
+        , '%'
+        , '#'
+        , '@'
+        , '~'
+        , '!'
+        , ','
+        ]
+
+
+
 -- String/Char
 
 
@@ -505,6 +588,16 @@ multilineComment =
         }
 
 
+commentChar : Parser String
+commentChar =
+    keep (Exactly 1) isCommentChar
+
+
+isCommentChar : Char -> Bool
+isCommentChar c =
+    c == '-' || c == '{'
+
+
 end : List Syntax -> Parser (List Syntax)
 end revSyntaxList =
     Parser.end
@@ -549,3 +642,6 @@ syntaxToFragment ( syntaxType, text ) =
 
         Number ->
             normal Color6 text
+
+        Infix ->
+            normal Color5 text
