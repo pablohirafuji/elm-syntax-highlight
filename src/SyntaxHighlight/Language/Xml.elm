@@ -8,9 +8,9 @@ module SyntaxHighlight.Language.Xml
         )
 
 import Char
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
 import SyntaxHighlight.Line exposing (Line, newLine, Fragment, Color(..), normal)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited)
+import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
 
 
 type alias Syntax =
@@ -38,22 +38,20 @@ toSyntax =
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
-mainLoop revSyntaxList =
+mainLoop revSyntaxes =
     oneOf
-        [ whitespace
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
-        , comment
-            |> andThen (\n -> mainLoop (n ++ revSyntaxList))
+        [ whitespace |> consThen mainLoop revSyntaxes
+        , comment |> addThen mainLoop revSyntaxes
         , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
             |> map ((,) Normal)
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
-        , openTag revSyntaxList
-        , end revSyntaxList
+            |> consThen mainLoop revSyntaxes
+        , openTag revSyntaxes
+        , end revSyntaxes
         ]
 
 
 openTag : List Syntax -> Parser (List Syntax)
-openTag revSyntaxList =
+openTag revSyntaxes =
     (ignore oneOrMore ((==) '<')
         |. oneOf
             [ ignore (Exactly 1) (\c -> c == '/' || c == '!')
@@ -62,37 +60,35 @@ openTag revSyntaxList =
     )
         |> source
         |> map ((,) Normal)
-        |> andThen (\n -> tag (n :: revSyntaxList))
+        |> consThen tag revSyntaxes
 
 
 endTag : List Syntax -> Parser (List Syntax)
-endTag revSyntaxList =
+endTag revSyntaxes =
     keep oneOrMore ((==) '>')
         |> map ((,) Normal)
-        |> andThen (\n -> mainLoop (n :: revSyntaxList))
+        |> consThen mainLoop revSyntaxes
 
 
 tag : List Syntax -> Parser (List Syntax)
-tag revSyntaxList =
+tag revSyntaxes =
     oneOf
-        [ (ignore (Exactly 1) isStartTagChar
-            |. ignore zeroOrMore isTagChar
-          )
+        [ ignore (Exactly 1) isStartTagChar
+            |> thenIgnore zeroOrMore isTagChar
             |> source
             |> map ((,) Tag)
-            |> andThen (\n -> attributeLoop (n :: revSyntaxList))
-        , chompUntilEndTag revSyntaxList
+            |> consThen attributeLoop revSyntaxes
+        , chompUntilEndTag revSyntaxes
         ]
 
 
 chompUntilEndTag : List Syntax -> Parser (List Syntax)
-chompUntilEndTag revSyntaxList =
-    (ignore zeroOrMore (\c -> c /= '>' && not (isLineBreak c))
-        |. ignore zeroOrMore ((==) '>')
-    )
+chompUntilEndTag revSyntaxes =
+    ignore zeroOrMore (\c -> c /= '>' && not (isLineBreak c))
+        |> thenIgnore zeroOrMore ((==) '>')
         |> source
         |> map ((,) Normal)
-        |> andThen (\n -> mainLoop (n :: revSyntaxList))
+        |> consThen mainLoop revSyntaxes
 
 
 isStartTagChar : Char -> Bool
@@ -106,18 +102,17 @@ isTagChar c =
 
 
 attributeLoop : List Syntax -> Parser (List Syntax)
-attributeLoop revSyntaxList =
+attributeLoop revSyntaxes =
     oneOf
         [ keep oneOrMore isAttributeChar
             |> map ((,) Attribute)
-            |> andThen (\n -> attributeConfirm (n :: revSyntaxList))
-        , whitespace
-            |> andThen (\n -> attributeLoop (n :: revSyntaxList))
-        , endTag revSyntaxList
+            |> consThen attributeConfirm revSyntaxes
+        , whitespace |> consThen attributeLoop revSyntaxes
+        , endTag revSyntaxes
         , keep oneOrMore (\c -> not (isWhitespace c) && c /= '>')
             |> map ((,) Normal)
-            |> andThen (\n -> attributeLoop (n :: revSyntaxList))
-        , end revSyntaxList
+            |> consThen attributeLoop revSyntaxes
+        , end revSyntaxes
         ]
 
 
@@ -127,27 +122,25 @@ isAttributeChar c =
 
 
 attributeConfirm : List Syntax -> Parser (List Syntax)
-attributeConfirm revSyntaxList =
+attributeConfirm revSyntaxes =
     oneOf
         [ whitespace
-            |> andThen (\n -> attributeConfirm (n :: revSyntaxList))
+            |> consThen attributeConfirm revSyntaxes
         , keep (Exactly 1) ((==) '=')
             |> map ((,) Normal)
-            |> andThen (\n -> attributeValueLoop (n :: revSyntaxList))
-        , endTag revSyntaxList
-        , attributeLoop revSyntaxList
+            |> consThen attributeValueLoop revSyntaxes
+        , endTag revSyntaxes
+        , attributeLoop revSyntaxes
         ]
 
 
 attributeValueLoop : List Syntax -> Parser (List Syntax)
-attributeValueLoop revSyntaxList =
+attributeValueLoop revSyntaxes =
     oneOf
-        [ whitespace
-            |> andThen (\n -> attributeValueLoop (n :: revSyntaxList))
-        , attributeValue
-            |> andThen (\n -> attributeLoop (n ++ revSyntaxList))
-        , endTag revSyntaxList
-        , end revSyntaxList
+        [ whitespace |> consThen attributeValueLoop revSyntaxes
+        , attributeValue |> addThen attributeLoop revSyntaxes
+        , endTag revSyntaxes
+        , end revSyntaxes
         ]
 
 
@@ -177,7 +170,7 @@ doubleQuoteDelimiter =
     , end = "\""
     , isNestable = False
     , defaultMap = ((,) AttributeValue)
-    , innerParsers = [ lineBreak ]
+    , innerParsers = [ lineBreakList ]
     , isNotRelevant = not << isLineBreak
     }
 
@@ -224,15 +217,20 @@ lineBreak =
         |> map ((,) LineBreak)
 
 
+lineBreakList : Parser (List Syntax)
+lineBreakList =
+    repeat oneOrMore lineBreak
+
+
 end : List Syntax -> Parser (List Syntax)
-end revSyntaxList =
+end revSyntaxes =
     Parser.end
-        |> map (always revSyntaxList)
+        |> map (always revSyntaxes)
 
 
 toLines : List Syntax -> List Line
-toLines revSyntaxList =
-    List.foldl toLinesHelp ( [], [] ) revSyntaxList
+toLines revSyntaxes =
+    List.foldl toLinesHelp ( [], [] ) revSyntaxes
         |> (\( lines, frags ) -> newLine frags :: lines)
 
 

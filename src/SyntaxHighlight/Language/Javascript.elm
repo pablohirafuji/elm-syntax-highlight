@@ -1,9 +1,9 @@
 module SyntaxHighlight.Language.Javascript exposing (parse)
 
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
 import SyntaxHighlight.Line exposing (Line, newLine, Fragment, Color(..), normal, emphasis)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable)
+import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable, addThen, consThen)
 
 
 type alias Syntax =
@@ -30,70 +30,59 @@ parse =
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
-mainLoop revSyntaxList =
+mainLoop revSyntaxes =
     oneOf
-        [ oneOf
-            [ comment
-            , stringLiteral
+        [ whitespaceOrComment mainLoop revSyntaxes
+        , stringLiteral
+            |> addThen mainLoop revSyntaxes
+        , oneOf
+            [ operatorChar
+            , groupChar
+            , number
             ]
-            |> andThen (\n -> mainLoop (n ++ revSyntaxList))
-        , whitespace
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
-        , keep oneOrMore isOperatorChar
-            |> andThen (\n -> mainLoop (( Keyword, n ) :: revSyntaxList))
-        , keep oneOrMore isGroupChar
-            |> andThen
-                (\n -> mainLoop (( Normal, n ) :: revSyntaxList))
-        , number
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
+            |> consThen mainLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
-            |> andThen
-                (\n ->
-                    if n == "function" || n == "static" then
-                        functionStatementLoop
-                            (( DeclarationKeyword, n ) :: revSyntaxList)
-                    else if n == "class" then
-                        classStatementLoop
-                            (( DeclarationKeyword, n ) :: revSyntaxList)
-                    else if n == "this" || n == "super" then
-                        mainLoop (( Param, n ) :: revSyntaxList)
-                    else if n == "constructor" then
-                        functionStatementLoop (( Function, n ) :: revSyntaxList)
-                    else if isKeyword n then
-                        mainLoop (( Keyword, n ) :: revSyntaxList)
-                    else if isDeclarationKeyword n then
-                        mainLoop (( DeclarationKeyword, n ) :: revSyntaxList)
-                    else if isLiteralKeyword n then
-                        mainLoop (( LiteralKeyword, n ) :: revSyntaxList)
-                    else
-                        functionEvalLoop n [] revSyntaxList
-                )
-        , end revSyntaxList
+            |> andThen (keywordParser revSyntaxes)
+        , end revSyntaxes
         ]
 
 
+keywordParser : List Syntax -> String -> Parser (List Syntax)
+keywordParser revSyntaxes n =
+    if n == "function" || n == "static" then
+        functionStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+    else if n == "class" then
+        classStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+    else if n == "this" || n == "super" then
+        mainLoop (( Param, n ) :: revSyntaxes)
+    else if n == "constructor" then
+        functionStatementLoop (( Function, n ) :: revSyntaxes)
+    else if isKeyword n then
+        mainLoop (( Keyword, n ) :: revSyntaxes)
+    else if isDeclarationKeyword n then
+        mainLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+    else if isLiteralKeyword n then
+        mainLoop (( LiteralKeyword, n ) :: revSyntaxes)
+    else
+        functionEvalLoop n revSyntaxes []
+
+
 functionStatementLoop : List Syntax -> Parser (List Syntax)
-functionStatementLoop revSyntaxList =
+functionStatementLoop revSyntaxes =
     oneOf
-        [ comment
-            |> andThen (\n -> functionStatementLoop (n ++ revSyntaxList))
-        , whitespace
-            |> andThen (\n -> functionStatementLoop (n :: revSyntaxList))
+        [ whitespaceOrComment functionStatementLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
-            |> andThen (\n -> functionStatementLoop (( Function, n ) :: revSyntaxList))
+            |> andThen (\n -> functionStatementLoop (( Function, n ) :: revSyntaxes))
         , symbol "("
-            |> andThen (\n -> argLoop (( Normal, "(" ) :: revSyntaxList))
-        , mainLoop revSyntaxList
+            |> andThen (\n -> argLoop (( Normal, "(" ) :: revSyntaxes))
+        , mainLoop revSyntaxes
         ]
 
 
 functionEvalLoop : String -> List Syntax -> List Syntax -> Parser (List Syntax)
-functionEvalLoop identifier postSyntaxList preSyntaxList =
+functionEvalLoop identifier preSyntaxList postSyntaxList =
     oneOf
-        [ comment
-            |> andThen (\n -> functionEvalLoop identifier (n ++ postSyntaxList) preSyntaxList)
-        , whitespace
-            |> andThen (\n -> functionEvalLoop identifier (n :: postSyntaxList) preSyntaxList)
+        [ whitespaceOrComment (functionEvalLoop identifier preSyntaxList) postSyntaxList
         , symbol "("
             |> andThen
                 (\n ->
@@ -109,32 +98,27 @@ functionEvalLoop identifier postSyntaxList preSyntaxList =
 
 
 classStatementLoop : List Syntax -> Parser (List Syntax)
-classStatementLoop revSyntaxList =
+classStatementLoop revSyntaxes =
     oneOf
-        [ comment
-            |> andThen (\n -> classStatementLoop (n ++ revSyntaxList))
-        , whitespace
-            |> andThen (\n -> classStatementLoop (n :: revSyntaxList))
+        [ whitespaceOrComment classStatementLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
-            |> andThen (\n -> mainLoop (( Function, n ) :: revSyntaxList))
-        , mainLoop revSyntaxList
+            |> map ((,) Function)
+            |> consThen mainLoop revSyntaxes
+        , mainLoop revSyntaxes
         ]
 
 
 argLoop : List Syntax -> Parser (List Syntax)
-argLoop revSyntaxList =
+argLoop revSyntaxes =
     oneOf
-        [ comment
-            |> andThen (\n -> argLoop (n ++ revSyntaxList))
-        , whitespace
-            |> andThen (\n -> argLoop (n :: revSyntaxList))
+        [ whitespaceOrComment argLoop revSyntaxes
         , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
-            |> andThen (\n -> argLoop (( Param, n ) :: revSyntaxList))
+            |> andThen (\n -> argLoop (( Param, n ) :: revSyntaxes))
         , keep oneOrMore (\c -> c == '/' || c == ',')
-            |> andThen (\n -> argLoop (( Normal, n ) :: revSyntaxList))
+            |> andThen (\n -> argLoop (( Normal, n ) :: revSyntaxes))
         , symbol ")"
-            |> andThen (\n -> mainLoop (( Normal, ")" ) :: revSyntaxList))
-        , end revSyntaxList
+            |> andThen (\n -> mainLoop (( Normal, ")" ) :: revSyntaxes))
+        , end revSyntaxes
         ]
 
 
@@ -321,7 +305,7 @@ quoteDelimiter =
     , end = "'"
     , isNestable = False
     , defaultMap = ((,) String)
-    , innerParsers = [ lineBreak, jsEscapable ]
+    , innerParsers = [ lineBreakList, jsEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
 
@@ -341,7 +325,7 @@ templateString =
         { quoteDelimiter
             | start = "`"
             , end = "`"
-            , innerParsers = [ lineBreak, jsEscapable ]
+            , innerParsers = [ lineBreakList, jsEscapable ]
             , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
         }
 
@@ -378,7 +362,7 @@ multilineComment =
         , end = "*/"
         , isNestable = False
         , defaultMap = ((,) Comment)
-        , innerParsers = [ lineBreak ]
+        , innerParsers = [ lineBreakList ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
 
@@ -392,12 +376,15 @@ isCommentChar c =
 -- Helpers
 
 
-whitespace : Parser Syntax
-whitespace =
+whitespaceOrComment : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
+whitespaceOrComment continueFunction revSyntaxes =
     oneOf
-        [ keep oneOrMore isSpace
-            |> map ((,) Normal)
-        , lineBreak
+        [ oneOf
+            [ keep oneOrMore isSpace |> map ((,) Normal)
+            , lineBreak
+            ]
+            |> consThen continueFunction revSyntaxes
+        , comment |> addThen continueFunction revSyntaxes
         ]
 
 
@@ -407,6 +394,11 @@ lineBreak =
         |> map ((,) LineBreak)
 
 
+lineBreakList : Parser (List Syntax)
+lineBreakList =
+    repeat oneOrMore lineBreak
+
+
 number : Parser Syntax
 number =
     SyntaxHighlight.Helpers.number
@@ -414,22 +406,23 @@ number =
         |> map ((,) LiteralKeyword)
 
 
-jsEscapable : Parser Syntax
+jsEscapable : Parser (List Syntax)
 jsEscapable =
     escapable
         |> source
         |> map ((,) LiteralKeyword)
+        |> repeat oneOrMore
 
 
 end : List Syntax -> Parser (List Syntax)
-end revSyntaxList =
+end revSyntaxes =
     Parser.end
-        |> map (always revSyntaxList)
+        |> map (always revSyntaxes)
 
 
 toLines : List Syntax -> List Line
-toLines revSyntaxList =
-    List.foldl toLinesHelp ( [], [] ) revSyntaxList
+toLines revSyntaxes =
+    List.foldl toLinesHelp ( [], [] ) revSyntaxes
         |> (\( lines, frags ) -> newLine frags :: lines)
 
 

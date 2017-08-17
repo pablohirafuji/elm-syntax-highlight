@@ -10,6 +10,8 @@ module SyntaxHighlight.Helpers
         , thenIgnore
         , escapable
         , isEscapable
+        , consThen
+        , addThen
         )
 
 import Set exposing (Set)
@@ -55,7 +57,7 @@ type alias Delimiter a =
     , end : String
     , isNestable : Bool
     , defaultMap : String -> a
-    , innerParsers : List (Parser a)
+    , innerParsers : List (Parser (List a))
     , isNotRelevant : Char -> Bool
     }
 
@@ -98,15 +100,16 @@ delimitedUnnestable ({ defaultMap, isNotRelevant, end, innerParsers } as options
     oneOf
         [ symbol end |> map (always (defaultMap end :: revAList))
         , Parser.end |> map (always revAList)
+        , oneOf innerParsers
+            |> addThen (delimitedUnnestable options) revAList
         , oneOf
-            [ oneOf innerParsers
-            , keep oneOrMore isNotRelevant |> map defaultMap
+            [ keep oneOrMore isNotRelevant |> map defaultMap
             , ignore (Exactly 1) (always True)
                 |> thenIgnore zeroOrMore isNotRelevant
                 |> source
                 |> map defaultMap
             ]
-            |> thenContinue (delimitedUnnestable options) revAList
+            |> consThen (delimitedUnnestable options) revAList
         ]
 
 
@@ -126,17 +129,18 @@ delimitedNestable nestLevel ({ defaultMap, isNotRelevant, start, end, innerParse
             |> thenIgnore zeroOrMore isNotRelevant
             |> source
             |> map defaultMap
-            |> thenContinue (delimitedNestable (nestLevel + 1) options) revAList
+            |> consThen (delimitedNestable (nestLevel + 1) options) revAList
         , Parser.end |> map (always revAList)
+        , oneOf innerParsers
+            |> addThen (delimitedUnnestable options) revAList
         , oneOf
-            [ oneOf innerParsers
-            , keep oneOrMore isNotRelevant |> map defaultMap
+            [ keep oneOrMore isNotRelevant |> map defaultMap
             , ignore (Exactly 1) (always True)
                 |> thenIgnore zeroOrMore isNotRelevant
                 |> source
                 |> map defaultMap
             ]
-            |> thenContinue (delimitedNestable nestLevel options) revAList
+            |> consThen (delimitedNestable nestLevel options) revAList
         ]
 
 
@@ -146,9 +150,14 @@ thenIgnore count isNotRelevant previousParser =
         |. ignore count isNotRelevant
 
 
-thenContinue : (List a -> Parser (List a)) -> List a -> Parser a -> Parser (List a)
-thenContinue f list pn =
+consThen : (List a -> Parser (List a)) -> List a -> Parser a -> Parser (List a)
+consThen f list pn =
     andThen (\n -> f (n :: list)) pn
+
+
+addThen : (List a -> Parser (List a)) -> List a -> Parser (List a) -> Parser (List a)
+addThen f list plist =
+    andThen (\n -> f (n ++ list)) plist
 
 
 
