@@ -7,7 +7,7 @@ import Html.Lazy exposing (lazy)
 import Html.Events exposing (onInput)
 import Json.Decode as Json
 import SyntaxHighlight as SH
-import SyntaxHighlight.Fragment exposing (Fragment)
+import SyntaxHighlight.Line exposing (Line)
 import AnimationFrame
 
 
@@ -23,6 +23,7 @@ main =
 
 type alias Model =
     { scroll : Scroll
+    , selection : Maybe Selection
     , language : Language
     , elm : LanguageModel
     , javascript : LanguageModel
@@ -33,10 +34,23 @@ type alias Model =
 initModel : Model
 initModel =
     { scroll = Scroll 0 0
+    , selection = Nothing
     , language = Elm
     , elm = { code = elmExample, scroll = Scroll 0 0 }
     , javascript = { code = javascriptExample, scroll = Scroll 0 0 }
     , xml = { code = xmlExample, scroll = Scroll 0 0 }
+    }
+
+
+type alias Scroll =
+    { top : Int
+    , left : Int
+    }
+
+
+type alias Selection =
+    { start : Int
+    , end : Int
     }
 
 
@@ -70,7 +84,7 @@ javascriptExample : String
 javascriptExample =
     """var iceCream = 'chocolate';
 if (iceCream === 'chocolate') {
-  alert('Yay, I love chocolate ice cream!');
+  alert(`Yay, I love ${iceCream} ice cream!`);
 } else {
   alert('Awwww, but chocolate is my favorite...');
 }
@@ -106,18 +120,13 @@ xmlExample =
 """
 
 
-type alias Scroll =
-    { top : Int
-    , left : Int
-    }
-
-
 type Msg
     = NoOp
     | SetText Language String
-    | OnScroll Int Int
+    | OnScroll Scroll
     | Frame Time
     | SetLanguage String
+    | OnSelect Selection
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -139,8 +148,8 @@ update msg ({ elm, xml, javascript } as model) =
             , Cmd.none
             )
 
-        OnScroll top left ->
-            ( { model | scroll = Scroll top left }
+        OnScroll scroll ->
+            ( { model | scroll = scroll }
             , Cmd.none
             )
 
@@ -176,6 +185,13 @@ update msg ({ elm, xml, javascript } as model) =
                   }
                 , Cmd.none
                 )
+
+        OnSelect selection ->
+            let
+                x =
+                    Debug.log "x" selection
+            in
+                ( model, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -231,18 +247,26 @@ viewLanguage lang curLang langModel parser =
             , onInput (SetText lang)
             , spellcheck False
             , Html.Events.on "scroll"
-                (Json.map2 OnScroll
+                (Json.map2 Scroll
                     (Json.at [ "target", "scrollTop" ] Json.int)
                     (Json.at [ "target", "scrollLeft" ] Json.int)
+                    |> Json.map OnScroll
+                )
+            , Html.Events.on "select"
+                (Json.map2 Selection
+                    (Json.at [ "target", "selectionStart" ] Json.int)
+                    (Json.at [ "target", "selectionEnd" ] Json.int)
+                    |> Json.map OnSelect
                 )
             ]
             []
         ]
 
 
-toHtml : (String -> Result x (List Fragment)) -> String -> Html Msg
+toHtml : (String -> Result x (List Line)) -> String -> Html Msg
 toHtml parser str =
     parser str
+        --|> Result.map (SH.highlightLines -6 -1 >> SH.toHtml)
         |> Result.map SH.toHtml
         |> Result.mapError (\x -> text (toString x))
         |> (\result ->

@@ -2,8 +2,8 @@ module SyntaxHighlight.Language.Javascript exposing (parse)
 
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal, emphasis)
-import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
+import SyntaxHighlight.Line exposing (Line, newLine, Fragment, Color(..), normal, emphasis)
+import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable)
 
 
 type alias Syntax =
@@ -20,21 +20,23 @@ type SyntaxType
     | Function
     | LiteralKeyword
     | Param
+    | LineBreak
 
 
-parse : String -> Result Error (List Fragment)
+parse : String -> Result Error (List Line)
 parse =
     Parser.run (mainLoop [])
-        >> Result.map (List.map syntaxToFragment)
+        >> Result.map toLines
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
 mainLoop revSyntaxList =
     oneOf
-        [ comment
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
-        , stringLiteral
-            |> andThen (\n -> mainLoop (n :: revSyntaxList))
+        [ oneOf
+            [ comment
+            , stringLiteral
+            ]
+            |> andThen (\n -> mainLoop (n ++ revSyntaxList))
         , whitespace
             |> andThen (\n -> mainLoop (n :: revSyntaxList))
         , keep oneOrMore isOperatorChar
@@ -42,6 +44,8 @@ mainLoop revSyntaxList =
         , keep oneOrMore isGroupChar
             |> andThen
                 (\n -> mainLoop (( Normal, n ) :: revSyntaxList))
+        , number
+            |> andThen (\n -> mainLoop (n :: revSyntaxList))
         , keep oneOrMore isIdentifierNameChar
             |> andThen
                 (\n ->
@@ -55,11 +59,11 @@ mainLoop revSyntaxList =
                         mainLoop (( Param, n ) :: revSyntaxList)
                     else if n == "constructor" then
                         functionStatementLoop (( Function, n ) :: revSyntaxList)
-                    else if isReservedWord1 n then
+                    else if isKeyword n then
                         mainLoop (( Keyword, n ) :: revSyntaxList)
-                    else if isReservedWord2 n then
+                    else if isDeclarationKeyword n then
                         mainLoop (( DeclarationKeyword, n ) :: revSyntaxList)
-                    else if isLiteral n then
+                    else if isLiteralKeyword n then
                         mainLoop (( LiteralKeyword, n ) :: revSyntaxList)
                     else
                         functionEvalLoop n [] revSyntaxList
@@ -72,7 +76,7 @@ functionStatementLoop : List Syntax -> Parser (List Syntax)
 functionStatementLoop revSyntaxList =
     oneOf
         [ comment
-            |> andThen (\n -> functionStatementLoop (n :: revSyntaxList))
+            |> andThen (\n -> functionStatementLoop (n ++ revSyntaxList))
         , whitespace
             |> andThen (\n -> functionStatementLoop (n :: revSyntaxList))
         , keep oneOrMore isIdentifierNameChar
@@ -87,7 +91,7 @@ functionEvalLoop : String -> List Syntax -> List Syntax -> Parser (List Syntax)
 functionEvalLoop identifier postSyntaxList preSyntaxList =
     oneOf
         [ comment
-            |> andThen (\n -> functionEvalLoop identifier (n :: postSyntaxList) preSyntaxList)
+            |> andThen (\n -> functionEvalLoop identifier (n ++ postSyntaxList) preSyntaxList)
         , whitespace
             |> andThen (\n -> functionEvalLoop identifier (n :: postSyntaxList) preSyntaxList)
         , symbol "("
@@ -108,7 +112,7 @@ classStatementLoop : List Syntax -> Parser (List Syntax)
 classStatementLoop revSyntaxList =
     oneOf
         [ comment
-            |> andThen (\n -> classStatementLoop (n :: revSyntaxList))
+            |> andThen (\n -> classStatementLoop (n ++ revSyntaxList))
         , whitespace
             |> andThen (\n -> classStatementLoop (n :: revSyntaxList))
         , keep oneOrMore isIdentifierNameChar
@@ -121,7 +125,7 @@ argLoop : List Syntax -> Parser (List Syntax)
 argLoop revSyntaxList =
     oneOf
         [ comment
-            |> andThen (\n -> argLoop (n :: revSyntaxList))
+            |> andThen (\n -> argLoop (n ++ revSyntaxList))
         , whitespace
             |> andThen (\n -> argLoop (n :: revSyntaxList))
         , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
@@ -148,64 +152,69 @@ isIdentifierNameChar c =
 -- Reserved Words
 
 
-isReservedWord1 : String -> Bool
-isReservedWord1 str =
-    Set.member str reservedWord1Set
+isKeyword : String -> Bool
+isKeyword str =
+    Set.member str keywordSet
 
 
-isReservedWord2 : String -> Bool
-isReservedWord2 str =
-    Set.member str reservedWord2Set
+keywordSet : Set String
+keywordSet =
+    Set.fromList
+        [ "break"
+        , "do"
+        , "instanceof"
+        , "typeof"
+        , "case"
+        , "else"
+        , "new"
+        , "catch"
+        , "finally"
+        , "return"
+        , "void"
+        , "continue"
+        , "for"
+        , "switch"
+        , "while"
+        , "debugger"
+        , "this"
+        , "with"
+        , "default"
+        , "if"
+        , "throw"
+        , "delete"
+        , "in"
+        , "try"
+        , "enum"
+        , "extends"
+        , "export"
+        , "import"
+        , "implements"
+        , "private"
+        , "public"
+        , "yield"
+        , "interface"
+        , "package"
+        , "protected"
+        ]
 
 
-reservedWord1Set : Set String
-reservedWord1Set =
-    [ "break"
-    , "do"
-    , "instanceof"
-    , "typeof"
-    , "case"
-    , "else"
-    , "new"
-    , "catch"
-    , "finally"
-    , "return"
-    , "void"
-    , "continue"
-    , "for"
-    , "switch"
-    , "while"
-    , "debugger"
-    , "this"
-    , "with"
-    , "default"
-    , "if"
-    , "throw"
-    , "delete"
-    , "in"
-    , "try"
-    , "enum"
-    , "extends"
-    , "export"
-    , "import"
-    , "implements"
-    , "private"
-    , "public"
-    , "yield"
-    , "interface"
-    , "package"
-    , "protected"
-    ]
-        |> Set.fromList
+isDeclarationKeyword : String -> Bool
+isDeclarationKeyword str =
+    Set.member str declarationKeywordSet
 
 
-reservedWord2Set : Set String
-reservedWord2Set =
-    [ "var"
-    , "const"
-    , "let"
-    ]
-        |> Set.fromList
+declarationKeywordSet : Set String
+declarationKeywordSet =
+    Set.fromList
+        [ "var"
+        , "const"
+        , "let"
+        ]
+
+
+isPunctuaction : Char -> Bool
+isPunctuaction c =
+    Set.member c punctuactorSet
 
 
 punctuactorSet : Set Char
@@ -213,9 +222,15 @@ punctuactorSet =
     Set.union operatorSet groupSet
 
 
-isPunctuaction : Char -> Bool
-isPunctuaction c =
-    Set.member c punctuactorSet
+operatorChar : Parser Syntax
+operatorChar =
+    keep oneOrMore isOperatorChar
+        |> map ((,) Keyword)
+
+
+isOperatorChar : Char -> Bool
+isOperatorChar c =
+    Set.member c operatorSet
 
 
 operatorSet : Set Char
@@ -240,9 +255,15 @@ operatorSet =
         ]
 
 
-isOperatorChar : Char -> Bool
-isOperatorChar c =
-    Set.member c operatorSet
+groupChar : Parser Syntax
+groupChar =
+    keep oneOrMore isGroupChar
+        |> map ((,) Normal)
+
+
+isGroupChar : Char -> Bool
+isGroupChar c =
+    Set.member c groupSet
 
 
 groupSet : Set Char
@@ -259,13 +280,13 @@ groupSet =
         ]
 
 
-isGroupChar : Char -> Bool
-isGroupChar c =
-    Set.member c groupSet
+isLiteralKeyword : String -> Bool
+isLiteralKeyword str =
+    Set.member str literalKeywordSet
 
 
-literalSet : Set String
-literalSet =
+literalKeywordSet : Set String
+literalKeywordSet =
     [ "true"
     , "false"
     , "null"
@@ -276,49 +297,52 @@ literalSet =
         |> Set.fromList
 
 
-isLiteral : String -> Bool
-isLiteral str =
-    Set.member str literalSet
+
+-- String literal
 
 
-stringLiteral : Parser Syntax
+stringLiteral : Parser (List Syntax)
 stringLiteral =
     oneOf
-        [ templateString
+        [ quote
         , doubleQuote
-        , singleQuote
+        , templateString
         ]
-        |> source
-        |> map ((,) String)
 
 
-templateString : Parser ()
-templateString =
-    delimited
-        { start = "`"
-        , end = "`"
-        , isNestable = False
-        , isEscapable = True
-        }
+quote : Parser (List Syntax)
+quote =
+    delimited quoteDelimiter
 
 
-doubleQuote : Parser ()
+quoteDelimiter : Delimiter Syntax
+quoteDelimiter =
+    { start = "'"
+    , end = "'"
+    , isNestable = False
+    , defaultMap = ((,) String)
+    , innerParsers = [ lineBreak, jsEscapable ]
+    , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
+    }
+
+
+doubleQuote : Parser (List Syntax)
 doubleQuote =
     delimited
-        { start = "\""
-        , end = "\""
-        , isNestable = False
-        , isEscapable = True
+        { quoteDelimiter
+            | start = "\""
+            , end = "\""
         }
 
 
-singleQuote : Parser ()
-singleQuote =
+templateString : Parser (List Syntax)
+templateString =
     delimited
-        { start = "'"
-        , end = "'"
-        , isNestable = False
-        , isEscapable = True
+        { quoteDelimiter
+            | start = "`"
+            , end = "`"
+            , innerParsers = [ lineBreak, jsEscapable ]
+            , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
         }
 
 
@@ -331,29 +355,31 @@ isStringLiteralChar c =
 -- Comments
 
 
-comment : Parser Syntax
+comment : Parser (List Syntax)
 comment =
     oneOf
         [ inlineComment
         , multilineComment
         ]
-        |> source
-        |> map ((,) Comment)
 
 
-inlineComment : Parser ()
+inlineComment : Parser (List Syntax)
 inlineComment =
     symbol "//"
         |. ignore zeroOrMore (not << isLineBreak)
+        |> source
+        |> map ((,) Comment >> List.singleton)
 
 
-multilineComment : Parser ()
+multilineComment : Parser (List Syntax)
 multilineComment =
     delimited
         { start = "/*"
         , end = "*/"
         , isNestable = False
-        , isEscapable = False
+        , defaultMap = ((,) Comment)
+        , innerParsers = [ lineBreak ]
+        , isNotRelevant = \c -> not (isLineBreak c)
         }
 
 
@@ -362,20 +388,63 @@ isCommentChar c =
     c == '/'
 
 
+
+-- Helpers
+
+
 whitespace : Parser Syntax
 whitespace =
-    keep oneOrMore isWhitespace
-        |> map ((,) Normal)
+    oneOf
+        [ keep oneOrMore isSpace
+            |> map ((,) Normal)
+        , lineBreak
+        ]
+
+
+lineBreak : Parser Syntax
+lineBreak =
+    keep (Exactly 1) isLineBreak
+        |> map ((,) LineBreak)
+
+
+number : Parser Syntax
+number =
+    SyntaxHighlight.Helpers.number
+        |> source
+        |> map ((,) LiteralKeyword)
+
+
+jsEscapable : Parser Syntax
+jsEscapable =
+    escapable
+        |> source
+        |> map ((,) LiteralKeyword)
 
 
 end : List Syntax -> Parser (List Syntax)
 end revSyntaxList =
     Parser.end
-        |> map (\_ -> List.reverse revSyntaxList)
+        |> map (always revSyntaxList)
 
 
-syntaxToFragment : Syntax -> Fragment
-syntaxToFragment ( syntaxType, text ) =
+toLines : List Syntax -> List Line
+toLines revSyntaxList =
+    List.foldl toLinesHelp ( [], [] ) revSyntaxList
+        |> (\( lines, frags ) -> newLine frags :: lines)
+
+
+toLinesHelp : Syntax -> ( List Line, List Fragment ) -> ( List Line, List Fragment )
+toLinesHelp ( syntaxType, text ) ( lines, fragments ) =
+    if syntaxType == LineBreak then
+        ( newLine fragments :: lines
+        , [ normal Default text ]
+        )
+    else
+        ( lines, toFragment ( syntaxType, text ) :: fragments )
+
+
+toFragment : Syntax -> Fragment
+toFragment ( syntaxType, text ) =
     case syntaxType of
         Normal ->
             normal Default text
@@ -403,3 +472,6 @@ syntaxToFragment ( syntaxType, text ) =
 
         Param ->
             normal Color7 text
+
+        LineBreak ->
+            normal Default text

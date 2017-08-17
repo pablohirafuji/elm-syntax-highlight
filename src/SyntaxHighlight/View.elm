@@ -1,19 +1,31 @@
 module SyntaxHighlight.View exposing (toHtml)
 
-import Html exposing (Html, text, span, br, code)
+import Html exposing (Html, text, span, br, code, div)
 import Html.Attributes exposing (classList)
-import SyntaxHighlight.Fragment exposing (..)
+import SyntaxHighlight.Line exposing (..)
 
 
-toHtml : List Fragment -> Html msg
-toHtml fragment =
-    fragment
-        |> List.map toElement
+toHtml : List Line -> Html msg
+toHtml lines =
+    lines
+        |> List.map lineView
         |> code []
 
 
-toElement : Fragment -> Html msg
-toElement { color, isEmphasis, isStrong, text } =
+lineView : Line -> Html msg
+lineView { fragments, isHighlight } =
+    fragments
+        |> List.map elementView
+        |> div
+            [ classList
+                [ ( "elmshLine", True )
+                , ( "elmshHighlight", isHighlight )
+                ]
+            ]
+
+
+elementView : Fragment -> Html msg
+elementView { text, color, isEmphasis, isStrong, isHighlight } =
     if color == Default && not isEmphasis && not isStrong then
         Html.text text
     else
@@ -22,6 +34,7 @@ toElement { color, isEmphasis, isStrong, text } =
                 [ ( "elmsh" ++ toString color, color /= Default )
                 , ( "elmshEmphasis", isEmphasis )
                 , ( "elmshStrong", isStrong )
+                , ( "elmshHighlight", isHighlight )
                 ]
             ]
             [ Html.text text ]

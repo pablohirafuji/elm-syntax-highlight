@@ -1,9 +1,16 @@
-module SyntaxHighlight.Language.Xml exposing (..)
+module SyntaxHighlight.Language.Xml
+    exposing
+        ( parse
+          -- Exposing just for tests purpose
+        , toSyntax
+          -- Exposing just for tests purpose
+        , SyntaxType(..)
+        )
 
 import Char
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen)
-import SyntaxHighlight.Fragment exposing (Fragment, Color(..), normal)
-import SyntaxHighlight.Helpers exposing (isWhitespace, isSpace, isLineBreak, delimited)
+import SyntaxHighlight.Line exposing (Line, newLine, Fragment, Color(..), normal)
+import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited)
 
 
 type alias Syntax =
@@ -16,33 +23,40 @@ type SyntaxType
     | Tag
     | Attribute
     | AttributeValue
+    | LineBreak
 
 
-parse : String -> Result Error (List Fragment)
+parse : String -> Result Error (List Line)
 parse =
+    toSyntax
+        >> Result.map toLines
+
+
+toSyntax : String -> Result Error (List Syntax)
+toSyntax =
     Parser.run (mainLoop [])
-        >> Result.map (List.map syntaxToFragment)
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
 mainLoop revSyntaxList =
     oneOf
-        [ keep oneOrMore (\c -> c /= '<')
-            |> map ((,) Normal)
+        [ whitespace
             |> andThen (\n -> mainLoop (n :: revSyntaxList))
         , comment
+            |> andThen (\n -> mainLoop (n ++ revSyntaxList))
+        , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
+            |> map ((,) Normal)
             |> andThen (\n -> mainLoop (n :: revSyntaxList))
-        , startTag revSyntaxList
+        , openTag revSyntaxList
         , end revSyntaxList
         ]
 
 
-startTag : List Syntax -> Parser (List Syntax)
-startTag revSyntaxList =
+openTag : List Syntax -> Parser (List Syntax)
+openTag revSyntaxList =
     (ignore oneOrMore ((==) '<')
         |. oneOf
-            [ ignore (Exactly 1) ((==) '/')
-            , ignore (Exactly 1) ((==) '!')
+            [ ignore (Exactly 1) (\c -> c == '/' || c == '!')
             , Parser.succeed ()
             ]
     )
@@ -58,16 +72,6 @@ endTag revSyntaxList =
         |> andThen (\n -> mainLoop (n :: revSyntaxList))
 
 
-chompUntilEndTag : List Syntax -> Parser (List Syntax)
-chompUntilEndTag revSyntaxList =
-    (ignore zeroOrMore ((/=) '>')
-        |. ignore zeroOrMore ((==) '>')
-    )
-        |> source
-        |> map ((,) Normal)
-        |> andThen (\n -> mainLoop (n :: revSyntaxList))
-
-
 tag : List Syntax -> Parser (List Syntax)
 tag revSyntaxList =
     oneOf
@@ -79,6 +83,16 @@ tag revSyntaxList =
             |> andThen (\n -> attributeLoop (n :: revSyntaxList))
         , chompUntilEndTag revSyntaxList
         ]
+
+
+chompUntilEndTag : List Syntax -> Parser (List Syntax)
+chompUntilEndTag revSyntaxList =
+    (ignore zeroOrMore (\c -> c /= '>' && not (isLineBreak c))
+        |. ignore zeroOrMore ((==) '>')
+    )
+        |> source
+        |> map ((,) Normal)
+        |> andThen (\n -> mainLoop (n :: revSyntaxList))
 
 
 isStartTagChar : Char -> Bool
@@ -131,44 +145,49 @@ attributeValueLoop revSyntaxList =
         [ whitespace
             |> andThen (\n -> attributeValueLoop (n :: revSyntaxList))
         , attributeValue
-            |> andThen (\n -> attributeLoop (n :: revSyntaxList))
+            |> andThen (\n -> attributeLoop (n ++ revSyntaxList))
         , endTag revSyntaxList
         , end revSyntaxList
         ]
 
 
 
--- String
+-- Attribute Value
 
 
-attributeValue : Parser Syntax
+attributeValue : Parser (List Syntax)
 attributeValue =
     oneOf
         [ doubleQuote
-        , singleQuote
+        , quote
         , ignore oneOrMore (\c -> not (isWhitespace c) && c /= '>')
+            |> source
+            |> map ((,) AttributeValue >> List.singleton)
         ]
-        |> source
-        |> map ((,) AttributeValue)
 
 
-doubleQuote : Parser ()
+doubleQuote : Parser (List Syntax)
 doubleQuote =
-    delimited
-        { start = "\""
-        , end = "\""
-        , isNestable = False
-        , isEscapable = False
-        }
+    delimited doubleQuoteDelimiter
 
 
-singleQuote : Parser ()
-singleQuote =
+doubleQuoteDelimiter : Delimiter Syntax
+doubleQuoteDelimiter =
+    { start = "\""
+    , end = "\""
+    , isNestable = False
+    , defaultMap = ((,) AttributeValue)
+    , innerParsers = [ lineBreak ]
+    , isNotRelevant = not << isLineBreak
+    }
+
+
+quote : Parser (List Syntax)
+quote =
     delimited
-        { start = "'"
-        , end = "'"
-        , isNestable = False
-        , isEscapable = False
+        { doubleQuoteDelimiter
+            | start = "'"
+            , end = "'"
         }
 
 
@@ -176,33 +195,59 @@ singleQuote =
 -- Comment
 
 
-comment : Parser Syntax
+comment : Parser (List Syntax)
 comment =
     delimited
-        { start = "<!--"
-        , end = "-->"
-        , isNestable = False
-        , isEscapable = False
+        { doubleQuoteDelimiter
+            | start = "<!--"
+            , end = "-->"
+            , defaultMap = ((,) Comment)
         }
-        |> source
-        |> map ((,) Comment)
+
+
+
+-- Helpers
 
 
 whitespace : Parser Syntax
 whitespace =
-    ignore oneOrMore isWhitespace
-        |> source
-        |> map ((,) Normal)
+    oneOf
+        [ keep oneOrMore isSpace
+            |> map ((,) Normal)
+        , lineBreak
+        ]
+
+
+lineBreak : Parser Syntax
+lineBreak =
+    keep (Exactly 1) isLineBreak
+        |> map ((,) LineBreak)
 
 
 end : List Syntax -> Parser (List Syntax)
 end revSyntaxList =
     Parser.end
-        |> map (\_ -> List.reverse revSyntaxList)
+        |> map (always revSyntaxList)
 
 
-syntaxToFragment : Syntax -> Fragment
-syntaxToFragment ( syntaxType, text ) =
+toLines : List Syntax -> List Line
+toLines revSyntaxList =
+    List.foldl toLinesHelp ( [], [] ) revSyntaxList
+        |> (\( lines, frags ) -> newLine frags :: lines)
+
+
+toLinesHelp : Syntax -> ( List Line, List Fragment ) -> ( List Line, List Fragment )
+toLinesHelp ( syntaxType, text ) ( lines, fragments ) =
+    if syntaxType == LineBreak then
+        ( newLine fragments :: lines
+        , [ normal Default text ]
+        )
+    else
+        ( lines, toFragment ( syntaxType, text ) :: fragments )
+
+
+toFragment : Syntax -> Fragment
+toFragment ( syntaxType, text ) =
     case syntaxType of
         Normal ->
             normal Default text
@@ -218,3 +263,6 @@ syntaxToFragment ( syntaxType, text ) =
 
         AttributeValue ->
             normal Color2 text
+
+        LineBreak ->
+            normal Default text
