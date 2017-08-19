@@ -10,7 +10,7 @@ module SyntaxHighlight.Language.Elm
 import Char
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat)
-import SyntaxHighlight.Line exposing (Line, newLine, Fragment, Color(..), normal, emphasis)
+import SyntaxHighlight.Line exposing (Line, newLine, toLines, Fragment, Color(..), normal, emphasis)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
 
 
@@ -36,7 +36,7 @@ type SyntaxType
 parse : String -> Result Error (List Line)
 parse =
     toSyntax
-        >> Result.map toLines
+        >> Result.map (toLines LineBreak toFragment)
 
 
 toSyntax : String -> Result Error (List Syntax)
@@ -535,22 +535,6 @@ elmEscapable =
 end : List Syntax -> Parser (List Syntax)
 end revSyntaxes =
     Parser.end |> map (always revSyntaxes)
-
-
-toLines : List Syntax -> List Line
-toLines revSyntaxes =
-    List.foldl toLinesHelp ( [], [] ) revSyntaxes
-        |> (\( lines, frags ) -> newLine frags :: lines)
-
-
-toLinesHelp : Syntax -> ( List Line, List Fragment ) -> ( List Line, List Fragment )
-toLinesHelp ( syntaxType, text ) ( lines, fragments ) =
-    if syntaxType == LineBreak then
-        ( newLine fragments :: lines
-        , [ normal Default text ]
-        )
-    else
-        ( lines, toFragment ( syntaxType, text ) :: fragments )
 
 
 toFragment : Syntax -> Fragment
