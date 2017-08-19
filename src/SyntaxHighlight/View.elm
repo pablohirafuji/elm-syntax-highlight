@@ -18,10 +18,10 @@ lineView { fragments, highlight } =
         |> List.map elementView
         |> div
             [ classList
-                [ ( "elmshLine", True )
-                , ( "elmshHighlight", highlight == Just Normal )
-                , ( "elmshAdd", highlight == Just Add )
-                , ( "elmshDel", highlight == Just Delete )
+                [ ( "elmsh-line", True )
+                , ( "elmsh-hl", highlight == Just Normal )
+                , ( "elmsh-add", highlight == Just Add )
+                , ( "elmsh-del", highlight == Just Delete )
                 ]
             ]
 
@@ -33,9 +33,38 @@ elementView { text, color, isEmphasis, isStrong } =
     else
         span
             [ classList
-                [ ( "elmsh" ++ toString color, color /= Default )
-                , ( "elmshEmphasis", isEmphasis )
-                , ( "elmshStrong", isStrong )
+                [ ( colorToString color, color /= Default )
+                , ( "elmsh-emphasis", isEmphasis )
+                , ( "elmsh-strong", isStrong )
                 ]
             ]
             [ Html.text text ]
+
+
+colorToString : Color -> String
+colorToString color =
+    (++) "elmsh" <|
+        case color of
+            Default ->
+                "0"
+
+            Color1 ->
+                "1"
+
+            Color2 ->
+                "2"
+
+            Color3 ->
+                "3"
+
+            Color4 ->
+                "4"
+
+            Color5 ->
+                "5"
+
+            Color6 ->
+                "6"
+
+            Color7 ->
+                "7"

@@ -266,6 +266,9 @@ viewLanguage lang curLang langModel parser =
 toHtml : (String -> Result x (List Line)) -> String -> Html Msg
 toHtml parser str =
     parser str
+        |> Result.map (SH.highlightLines Normal 0 1)
+        |> Result.map (SH.highlightLines Add 1 3)
+        |> Result.map (SH.highlightLines Delete 3 5)
         |> Result.map SH.toHtml
         |> Result.mapError (\x -> text (toString x))
         |> (\result ->
