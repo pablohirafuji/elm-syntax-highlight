@@ -10,7 +10,8 @@ module SyntaxHighlight.Language.Elm
 import Char
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat)
-import SyntaxHighlight.Line exposing (Line, newLine, toLines, Fragment, Color(..), normal, emphasis)
+import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
+import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
 
 

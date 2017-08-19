@@ -4,16 +4,24 @@
 	color: #F8F8F2;
 }
 
+.elmshHighlight {
+	background: #0E0F0D;
+}
+
+.elmshAdd {
+	background: #003800;
+}
+
+.elmshDel {
+	background: #380000;
+}
+
 .elmshStrong {
 	font-weight: bold;
 }
 
 .elmshEmphasis {
 	font-style: italic;
-}
-
-.elmshHighlight {
-	background: #0e0f0d;
 }
 
 .elmshColor1 {

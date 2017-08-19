@@ -13,7 +13,7 @@ module SyntaxHighlight exposing (toHtml, highlightLines, elm, xml, javascript)
 
 import Html exposing (Html)
 import Parser
-import SyntaxHighlight.Line as Line exposing (Line, Fragment)
+import SyntaxHighlight.Line as Line exposing (Line, Highlight)
 import SyntaxHighlight.View as View
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Xml as Xml
@@ -30,7 +30,7 @@ toHtml =
 {-| Highlight lines given a start and end index.
 Negative indexes are taken starting from the *end* of the list.
 -}
-highlightLines : Int -> Int -> List Line -> List Line
+highlightLines : Highlight -> Int -> Int -> List Line -> List Line
 highlightLines =
     Line.highlightLines
 

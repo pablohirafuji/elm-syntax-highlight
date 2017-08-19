@@ -7,7 +7,7 @@ import Html.Lazy exposing (lazy)
 import Html.Events exposing (onInput)
 import Json.Decode as Json
 import SyntaxHighlight as SH
-import SyntaxHighlight.Line exposing (Line)
+import SyntaxHighlight.Line exposing (Line, Highlight(..))
 import AnimationFrame
 
 
@@ -266,7 +266,6 @@ viewLanguage lang curLang langModel parser =
 toHtml : (String -> Result x (List Line)) -> String -> Html Msg
 toHtml parser str =
     parser str
-        --|> Result.map (SH.highlightLines -6 -1 >> SH.toHtml)
         |> Result.map SH.toHtml
         |> Result.mapError (\x -> text (toString x))
         |> (\result ->

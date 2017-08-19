@@ -13,19 +13,21 @@ toHtml lines =
 
 
 lineView : Line -> Html msg
-lineView { fragments, isHighlight } =
+lineView { fragments, highlight } =
     fragments
         |> List.map elementView
         |> div
             [ classList
                 [ ( "elmshLine", True )
-                , ( "elmshHighlight", isHighlight )
+                , ( "elmshHighlight", highlight == Just Normal )
+                , ( "elmshAdd", highlight == Just Add )
+                , ( "elmshDel", highlight == Just Delete )
                 ]
             ]
 
 
 elementView : Fragment -> Html msg
-elementView { text, color, isEmphasis, isStrong, isHighlight } =
+elementView { text, color, isEmphasis, isStrong } =
     if color == Default && not isEmphasis && not isStrong then
         Html.text text
     else
@@ -34,7 +36,6 @@ elementView { text, color, isEmphasis, isStrong, isHighlight } =
                 [ ( "elmsh" ++ toString color, color /= Default )
                 , ( "elmshEmphasis", isEmphasis )
                 , ( "elmshStrong", isStrong )
-                , ( "elmshHighlight", isHighlight )
                 ]
             ]
             [ Html.text text ]

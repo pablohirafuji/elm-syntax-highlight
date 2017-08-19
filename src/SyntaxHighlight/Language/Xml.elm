@@ -9,7 +9,8 @@ module SyntaxHighlight.Language.Xml
 
 import Char
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
-import SyntaxHighlight.Line exposing (Line, newLine, toLines, Fragment, Color(..), normal)
+import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
+import SyntaxHighlight.Line.Helpers exposing (toLines, normal)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
 
 
