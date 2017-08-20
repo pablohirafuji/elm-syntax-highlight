@@ -1,4 +1,15 @@
-module SyntaxHighlight exposing (toHtml, highlightLines, elm, xml, javascript)
+module SyntaxHighlight
+    exposing
+        ( toHtml
+        , highlightLines
+        , elm
+        , xml
+        , javascript
+        , Theme
+        , useTheme
+        , monokai
+        , github
+        )
 
 {-| Syntax highlighting in Elm.
 
@@ -9,18 +20,24 @@ module SyntaxHighlight exposing (toHtml, highlightLines, elm, xml, javascript)
 
 @docs elm, xml, javascript
 
+
+## Themes
+
+@docs Theme, useTheme, monokai, github
+
 -}
 
-import Html exposing (Html)
+import Html exposing (Html, text)
 import Parser
 import SyntaxHighlight.Line as Line exposing (Line, Highlight)
 import SyntaxHighlight.View as View
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Language.Javascript as Javascript
+import SyntaxHighlight.Theme as Theme
 
 
-{-| Transform to Html.
+{-| Transform a list of lines into Html.
 -}
 toHtml : List Line -> Html msg
 toHtml =
@@ -30,7 +47,7 @@ toHtml =
 {-| Highlight lines given a start and end index.
 Negative indexes are taken starting from the *end* of the list.
 -}
-highlightLines : Highlight -> Int -> Int -> List Line -> List Line
+highlightLines : Maybe Highlight -> Int -> Int -> List Line -> List Line
 highlightLines =
     Line.highlightLines
 
@@ -54,3 +71,56 @@ xml =
 javascript : String -> Result Parser.Error (List Line)
 javascript =
     Javascript.parse
+
+
+{-| Theme type.
+-}
+type Theme
+    = Theme String
+
+
+{-| Transform a theme into Html. Any highlighted code
+will be themed according to the chosen `Theme`.
+The `Bool` argument is for showing or not a line counter.
+-}
+useTheme : Bool -> Theme -> Html msg
+useTheme showLineCount (Theme theme) =
+    let
+        style =
+            if showLineCount then
+                showLineCountCSS ++ theme
+            else
+                theme
+    in
+        Html.node "style" [] [ text style ]
+
+
+showLineCountCSS : String
+showLineCountCSS =
+    """
+.elmsh {
+    counter-reset: line;
+}
+.elmsh-line:before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    text-align: right;
+    width: 40px;
+    padding: 0 20px 0 0;
+    color: #75715E;
+}"""
+
+
+{-| Monokai inspired theme.
+-}
+monokai : Theme
+monokai =
+    Theme Theme.monokai
+
+
+{-| GitHub inspired theme.
+-}
+github : Theme
+github =
+    Theme Theme.github

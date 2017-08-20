@@ -1,7 +1,7 @@
 module SyntaxHighlight.View exposing (toHtml)
 
 import Html exposing (Html, text, span, br, code, div)
-import Html.Attributes exposing (classList)
+import Html.Attributes exposing (class, classList)
 import SyntaxHighlight.Line exposing (..)
 
 
@@ -9,7 +9,7 @@ toHtml : List Line -> Html msg
 toHtml lines =
     lines
         |> List.map lineView
-        |> code []
+        |> code [ class "elmsh" ]
 
 
 lineView : Line -> Html msg

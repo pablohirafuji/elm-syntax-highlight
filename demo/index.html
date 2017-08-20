@@ -24,6 +24,9 @@
 		.subheading {
 			margin-top: 0;
 		}
+		ul {
+			text-align: left;
+		}
 		.container {
 			position: relative;
 			font-size: 14px;
@@ -53,16 +56,14 @@
 		.textarea {
 			color: rgba(0,0,0,0);
 			resize: none;
-			caret-color: #F8F8F2;
 			z-index: 2;
 			position: relative;
+		}
+		.textarea-lc {
 			padding-left: 65px;
 		}
 		.textarea:focus {
 			outline: none;
-		}
-		.textarea::selection {
-			background-color: rgba(255,255,255,0.2);
 		}
 		.view-container {
 			position: absolute;
@@ -73,20 +74,8 @@
 		}
 		.view-container code {
 			word-wrap: break-word;
-			counter-reset: line;
-		}
-		.elmshLine:before {
-			counter-increment: line;
-			content: counter(line);
-			display: inline-block;
-			text-align: right;
-			width: 40px;
-			padding: 0 20px 0 0;
-			color: #75715E;
 		}
 	</style>
-	<link rel="stylesheet" type="text/css" href="elmsh-monokai.css">
-	<link rel="stylesheet" type="text/css" href="elmsh-github.css">
 </head>
 <body>
 	<h1>Elm Syntax Highlight</h1>

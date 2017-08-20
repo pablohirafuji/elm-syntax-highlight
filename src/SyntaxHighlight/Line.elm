@@ -20,8 +20,8 @@ type Highlight
     | Delete
 
 
-highlightLines : Highlight -> Int -> Int -> List Line -> List Line
-highlightLines highlight start end lines =
+highlightLines : Maybe Highlight -> Int -> Int -> List Line -> List Line
+highlightLines maybeHighlight start end lines =
     let
         length =
             List.length lines
@@ -38,13 +38,13 @@ highlightLines highlight start end lines =
             else
                 end
     in
-        List.indexedMap (highlightLinesHelp highlight start_ end_) lines
+        List.indexedMap (highlightLinesHelp maybeHighlight start_ end_) lines
 
 
-highlightLinesHelp : Highlight -> Int -> Int -> Int -> Line -> Line
-highlightLinesHelp highlight start end index line =
+highlightLinesHelp : Maybe Highlight -> Int -> Int -> Int -> Line -> Line
+highlightLinesHelp maybeHighlight start end index line =
     if index >= start && index < end then
-        { line | highlight = Just highlight }
+        { line | highlight = maybeHighlight }
     else
         line
 
