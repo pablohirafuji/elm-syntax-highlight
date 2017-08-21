@@ -37,7 +37,21 @@ lineView start index { fragments, highlight } =
 toInlineHtml : List Line -> Html msg
 toInlineHtml lines =
     lines
-        |> List.map (.fragments >> List.map elementView)
+        |> List.map
+            (\{ highlight, fragments } ->
+                if highlight == Nothing then
+                    List.map elementView fragments
+                else
+                    [ span
+                        [ classList
+                            [ ( "elmsh-hl", highlight == Just Normal )
+                            , ( "elmsh-add", highlight == Just Add )
+                            , ( "elmsh-del", highlight == Just Delete )
+                            ]
+                        ]
+                        (List.map elementView fragments)
+                    ]
+            )
         |> List.concat
         |> code [ class "elmsh" ]
 
