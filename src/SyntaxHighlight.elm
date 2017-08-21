@@ -1,7 +1,7 @@
 module SyntaxHighlight
     exposing
-        ( toHtml
-        , highlightLines
+        ( toBlockHtml
+        , toInlineHtml
         , elm
         , xml
         , javascript
@@ -13,7 +13,7 @@ module SyntaxHighlight
 
 {-| Syntax highlighting in Elm.
 
-@docs toHtml, highlightLines
+@docs toBlockHtml, toInlineHtml
 
 
 ## Languages
@@ -37,19 +37,20 @@ import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Theme as Theme
 
 
-{-| Transform a list of lines into Html.
+{-| Transform a list of lines into a Html block. The `Maybe Int`
+argument is for showing or not line count and, if so, starting
+from what number.
 -}
-toHtml : List Line -> Html msg
-toHtml =
-    View.toHtml
+toBlockHtml : Maybe Int -> List Line -> Html msg
+toBlockHtml =
+    View.toBlockHtml
 
 
-{-| Highlight lines given a start and end index.
-Negative indexes are taken starting from the *end* of the list.
+{-| Transform a list of lines into inline Html.
 -}
-highlightLines : Maybe Highlight -> Int -> Int -> List Line -> List Line
-highlightLines =
-    Line.highlightLines
+toInlineHtml : List Line -> Html msg
+toInlineHtml =
+    View.toInlineHtml
 
 
 {-| Highlight Elm syntax.
@@ -73,7 +74,7 @@ javascript =
     Javascript.parse
 
 
-{-| Theme type.
+{-| A theme defines the background and syntax colors.
 -}
 type Theme
     = Theme String
@@ -81,45 +82,22 @@ type Theme
 
 {-| Transform a theme into Html. Any highlighted code
 will be themed according to the chosen `Theme`.
-The `Bool` argument is for showing or not a line counter.
+If you prefer to use CSS external stylesheet, you do **not** need this,
+just copy the theme CSS into your stylesheet.
 -}
-useTheme : Bool -> Theme -> Html msg
-useTheme showLineCount (Theme theme) =
-    let
-        style =
-            if showLineCount then
-                showLineCountCSS ++ theme
-            else
-                theme
-    in
-        Html.node "style" [] [ text style ]
+useTheme : Theme -> Html msg
+useTheme (Theme theme) =
+    Html.node "style" [] [ text theme ]
 
 
-showLineCountCSS : String
-showLineCountCSS =
-    """
-.elmsh {
-    counter-reset: line;
-}
-.elmsh-line:before {
-    counter-increment: line;
-    content: counter(line);
-    display: inline-block;
-    text-align: right;
-    width: 40px;
-    padding: 0 20px 0 0;
-    color: #75715E;
-}"""
-
-
-{-| Monokai inspired theme.
+{-| Monokai inspired theme. CSS link.
 -}
 monokai : Theme
 monokai =
     Theme Theme.monokai
 
 
-{-| GitHub inspired theme.
+{-| GitHub inspired theme. CSS link.
 -}
 github : Theme
 github =

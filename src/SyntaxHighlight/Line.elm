@@ -7,19 +7,49 @@ module SyntaxHighlight.Line
         , Color(..)
         )
 
+{-| A parsed highlighted line.
 
+@docs Line, Fragment, Color, Highlight
+
+
+## Helpers
+
+@docs highlightLines
+
+-}
+
+
+{-| A line.
+-}
 type alias Line =
     { fragments : List Fragment
     , highlight : Maybe Highlight
     }
 
 
+{-| A fragment.
+-}
+type alias Fragment =
+    { text : String
+    , color : Color
+    , isEmphasis : Bool
+    , isStrong : Bool
+    }
+
+
+{-| Highlight type.
+-}
 type Highlight
     = Normal
     | Add
     | Delete
 
 
+{-| Highlight lines given a highlight type, start and end index.
+If no highlight type is given (`Nothing`), it will remove any
+highlight from that lines.
+Negative indexes are taken starting from the *end* of the list.
+-}
 highlightLines : Maybe Highlight -> Int -> Int -> List Line -> List Line
 highlightLines maybeHighlight start end lines =
     let
@@ -49,19 +79,20 @@ highlightLinesHelp maybeHighlight start end index line =
         line
 
 
-type alias Fragment =
-    { text : String
-    , color : Color
-    , isEmphasis : Bool
-    , isStrong : Bool
-    }
+{-| Possible colors.
 
+The common uses of the color are the following:
 
+  - Default: Default color
+  - Color1: Comment
+  - Color2: Literal string, attribute value
+  - Color3: Keyword, tag, operator symbol (=+-*/...)
+  - Color4: Keyword, type signature, group symbol ({}(),)
+  - Color5: Function, attribute name
+  - Color6: Literal keyword
+  - Color7: Argument, parameter
 
--- Style
--- The comment say the most common uses of the color.
-
-
+-}
 type Color
     = Default
     | Color1 -- Comment

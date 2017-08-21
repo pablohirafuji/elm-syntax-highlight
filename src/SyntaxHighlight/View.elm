@@ -1,29 +1,45 @@
-module SyntaxHighlight.View exposing (toHtml)
+module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml)
 
-import Html exposing (Html, text, span, br, code, div)
-import Html.Attributes exposing (class, classList)
+import Html exposing (Html, text, span, br, code, div, pre)
+import Html.Attributes exposing (class, classList, attribute)
 import SyntaxHighlight.Line exposing (..)
 
 
-toHtml : List Line -> Html msg
-toHtml lines =
-    lines
-        |> List.map lineView
-        |> code [ class "elmsh" ]
+toBlockHtml : Maybe Int -> List Line -> Html msg
+toBlockHtml maybeStart lines =
+    case maybeStart of
+        Nothing ->
+            pre [ class "elmsh" ]
+                [ toInlineHtml lines ]
+
+        Just start ->
+            lines
+                |> List.indexedMap (lineView start)
+                |> code []
+                |> List.singleton
+                |> pre [ class "elmsh" ]
 
 
-lineView : Line -> Html msg
-lineView { fragments, highlight } =
-    fragments
-        |> List.map elementView
-        |> div
-            [ classList
-                [ ( "elmsh-line", True )
-                , ( "elmsh-hl", highlight == Just Normal )
-                , ( "elmsh-add", highlight == Just Add )
-                , ( "elmsh-del", highlight == Just Delete )
-                ]
+lineView : Int -> Int -> Line -> Html msg
+lineView start index { fragments, highlight } =
+    div
+        [ classList
+            [ ( "elmsh-line", True )
+            , ( "elmsh-hl", highlight == Just Normal )
+            , ( "elmsh-add", highlight == Just Add )
+            , ( "elmsh-del", highlight == Just Delete )
             ]
+        , attribute "data-elmsh-lc" (toString (start + index))
+        ]
+        (List.map elementView fragments)
+
+
+toInlineHtml : List Line -> Html msg
+toInlineHtml lines =
+    lines
+        |> List.map (.fragments >> List.map elementView)
+        |> List.concat
+        |> code [ class "elmsh" ]
 
 
 elementView : Fragment -> Html msg

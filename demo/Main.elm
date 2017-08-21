@@ -3,11 +3,11 @@ module Main exposing (..)
 import Time exposing (Time)
 import Html exposing (Html, div, text, p, textarea, pre, code, option, select, label, ul, li, input, button)
 import Html.Attributes exposing (defaultValue, id, class, value, spellcheck, selected, style, type_, placeholder, checked, classList)
-import Html.Lazy exposing (lazy2)
+import Html.Lazy
 import Html.Events exposing (onClick, onInput, onCheck)
 import Json.Decode as Json
 import SyntaxHighlight as SH
-import SyntaxHighlight.Line exposing (Line, Highlight(..))
+import SyntaxHighlight.Line as SH exposing (Line, Highlight(..))
 import AnimationFrame
 
 
@@ -21,10 +21,6 @@ main =
         }
 
 
-
---port changeCss : String -> Cmd msg
-
-
 type alias Model =
     { scroll : Scroll
     , selection : Maybe Selection
@@ -33,6 +29,8 @@ type alias Model =
     , javascript : LanguageModel
     , xml : LanguageModel
     , showLineCount : Bool
+    , lineCountStart : Int
+    , lineCount : Maybe Int
     , colorScheme : String
     , highlight : HighlightModel
     }
@@ -47,8 +45,10 @@ initModel =
     , javascript = initLanguageModel javascriptExample
     , xml = initLanguageModel xmlExample
     , showLineCount = True
+    , lineCountStart = 1
+    , lineCount = Just 1
     , colorScheme = "monokai"
-    , highlight = initHighlightModel
+    , highlight = HighlightModel (Just Add) 1 3
     }
 
 
@@ -162,6 +162,7 @@ type Msg
     | SetLanguage Language
     | OnSelect Selection
     | ShowLineCount Bool
+    | SetLineCountStart Int
     | SetColorScheme String
     | SetHighlightMode (Maybe Highlight)
     | SetHighlightStart Int
@@ -193,23 +194,43 @@ update msg ({ elm, xml, javascript, highlight } as model) =
                 |> flip (,) Cmd.none
 
         SetLanguage lang ->
-            ( { model
-                | scroll = getLangModel lang model |> .scroll
-                , language = lang
-              }
-            , Cmd.none
-            )
+            getLangModel lang model
+                |> (\m -> { m | scroll = Scroll 0 0 })
+                |> updateLangModel lang model
+                |> (\m ->
+                        { m
+                            | scroll = Scroll 0 0
+                            , language = lang
+                        }
+                   )
+                |> flip (,) Cmd.none
 
         OnSelect selection ->
             ( model, Cmd.none )
 
         ShowLineCount bool ->
-            ( { model | showLineCount = bool }, Cmd.none )
+            ( { model
+                | showLineCount = bool
+                , lineCount =
+                    if bool then
+                        Just model.lineCountStart
+                    else
+                        Nothing
+              }
+            , Cmd.none
+            )
+
+        SetLineCountStart start ->
+            ( { model
+                | lineCountStart = start
+                , lineCount = Just start
+              }
+            , Cmd.none
+            )
 
         SetColorScheme cs ->
             ( { model | colorScheme = cs }
             , Cmd.none
-              --changeCss cs
             )
 
         SetHighlightMode mode ->
@@ -289,73 +310,71 @@ textareaStyle { colorScheme } =
 syntaxTheme : Model -> Html msg
 syntaxTheme { showLineCount, colorScheme } =
     if colorScheme == "monokai" then
-        SH.useTheme showLineCount SH.monokai
+        SH.useTheme SH.monokai
     else
-        SH.useTheme showLineCount SH.github
+        SH.useTheme SH.github
 
 
 viewLanguage : Language -> Model -> Html Msg
-viewLanguage thisLang ({ language, showLineCount } as model) =
-    let
-        ( langModel, parser ) =
-            getLangModelParser thisLang model
-    in
-        div
-            [ classList
-                [ ( "container", True )
-                , ( "elmsh", True )
-                ]
-            , style
-                [ ( "display"
-                  , if thisLang == language then
-                        "block"
-                    else
-                        "none"
-                  )
-                ]
-            ]
-            [ pre
-                [ class "view-container"
-                , style
-                    [ ( "transform"
-                      , "translate(" ++ toString -langModel.scroll.left ++ "px, " ++ toString -langModel.scroll.top ++ "px)"
-                      )
-                    , ( "will-change"
-                      , if thisLang == language then
-                            "transform"
-                        else
-                            "auto"
-                      )
+viewLanguage thisLang ({ language, lineCount } as model) =
+    if thisLang /= language then
+        div [] []
+    else
+        let
+            ( langModel, parser ) =
+                getLangModelParser thisLang model
+        in
+            div
+                [ classList
+                    [ ( "container", True )
+                    , ( "elmsh", True )
                     ]
                 ]
-                [ lazy2 parser langModel.code langModel.highlight
-                ]
-            , textarea
-                [ defaultValue langModel.code
-                , classList
-                    [ ( "textarea", True )
-                    , ( "textarea-lc", showLineCount )
+                [ div
+                    [ class "view-container"
+                    , style
+                        [ ( "transform"
+                          , "translate(" ++ toString -langModel.scroll.left ++ "px, " ++ toString -langModel.scroll.top ++ "px)"
+                          )
+                        , ( "will-change", "transform" )
+                        ]
                     ]
-                , onInput (SetText thisLang)
-                , spellcheck False
-                , Html.Events.on "scroll"
-                    (Json.map2 Scroll
-                        (Json.at [ "target", "scrollTop" ] Json.int)
-                        (Json.at [ "target", "scrollLeft" ] Json.int)
-                        |> Json.map OnScroll
-                    )
-                , Html.Events.on "select"
-                    (Json.map2 Selection
-                        (Json.at [ "target", "selectionStart" ] Json.int)
-                        (Json.at [ "target", "selectionEnd" ] Json.int)
-                        |> Json.map OnSelect
-                    )
+                    [ Html.Lazy.lazy3 parser
+                        lineCount
+                        langModel.code
+                        langModel.highlight
+                    ]
+                , viewTextarea thisLang langModel.code model
                 ]
-                []
+
+
+viewTextarea : Language -> String -> Model -> Html Msg
+viewTextarea thisLang codeStr { showLineCount } =
+    textarea
+        [ defaultValue codeStr
+        , classList
+            [ ( "textarea", True )
+            , ( "textarea-lc", showLineCount )
             ]
+        , onInput (SetText thisLang)
+        , spellcheck False
+        , Html.Events.on "scroll"
+            (Json.map2 Scroll
+                (Json.at [ "target", "scrollTop" ] Json.int)
+                (Json.at [ "target", "scrollLeft" ] Json.int)
+                |> Json.map OnScroll
+            )
+        , Html.Events.on "select"
+            (Json.map2 Selection
+                (Json.at [ "target", "selectionStart" ] Json.int)
+                (Json.at [ "target", "selectionEnd" ] Json.int)
+                |> Json.map OnSelect
+            )
+        ]
+        []
 
 
-getLangModelParser : Language -> Model -> ( LanguageModel, String -> HighlightModel -> Html Msg )
+getLangModelParser : Language -> Model -> ( LanguageModel, Maybe Int -> String -> HighlightModel -> Html Msg )
 getLangModelParser lang model =
     case lang of
         Elm ->
@@ -369,7 +388,7 @@ getLangModelParser lang model =
 
 
 viewOptions : Model -> Html Msg
-viewOptions ({ language, showLineCount, colorScheme } as model) =
+viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) =
     ul []
         [ li []
             [ label []
@@ -381,6 +400,10 @@ viewOptions ({ language, showLineCount, colorScheme } as model) =
                     []
                 , text "Show Line Count"
                 ]
+            , if showLineCount then
+                numberInput " - Start: " lineCountStart SetLineCountStart
+              else
+                text ""
             ]
         , li []
             [ label []
@@ -448,8 +471,8 @@ viewHighlightOptions { mode, start, end } =
                     ]
                 ]
             ]
-        , li [] [ numberInput "Start: " SetHighlightStart ]
-        , li [] [ numberInput "End: " SetHighlightEnd ]
+        , li [] [ numberInput "Start: " start SetHighlightStart ]
+        , li [] [ numberInput "End: " end SetHighlightEnd ]
         , li [] [ button [ onClick ApplyHighlight ] [ text "Highlight" ] ]
         ]
 
@@ -470,8 +493,8 @@ toHighlightMode str =
             Nothing
 
 
-numberInput : String -> (Int -> Msg) -> Html Msg
-numberInput labelStr msg =
+numberInput : String -> Int -> (Int -> Msg) -> Html Msg
+numberInput labelStr defaultVal msg =
     label []
         [ text labelStr
         , input
@@ -479,16 +502,17 @@ numberInput labelStr msg =
             , Html.Attributes.min "-999"
             , Html.Attributes.max "999"
             , onInput (String.toInt >> Result.withDefault 0 >> msg)
+            , defaultValue (toString defaultVal)
             ]
             []
         ]
 
 
-toHtml : (String -> Result x (List Line)) -> String -> HighlightModel -> Html Msg
-toHtml parser str hlModel =
+toHtml : (String -> Result x (List Line)) -> Maybe Int -> String -> HighlightModel -> Html Msg
+toHtml parser maybeStart str hlModel =
     parser str
         |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
-        |> Result.map SH.toHtml
+        |> Result.map (SH.toBlockHtml maybeStart)
         |> Result.mapError (\x -> text (toString x))
         |> (\result ->
                 case result of
@@ -504,16 +528,16 @@ toHtml parser str hlModel =
 -- Helpers function for Html.Lazy.lazy
 
 
-toHtmlElm : String -> HighlightModel -> Html Msg
+toHtmlElm : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlElm =
     toHtml SH.elm
 
 
-toHtmlXml : String -> HighlightModel -> Html Msg
+toHtmlXml : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlXml =
     toHtml SH.xml
 
 
-toHtmlJavascript : String -> HighlightModel -> Html Msg
+toHtmlJavascript : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlJavascript =
     toHtml SH.javascript
