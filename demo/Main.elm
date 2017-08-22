@@ -8,6 +8,7 @@ import Html.Events exposing (onClick, onInput, onCheck)
 import Json.Decode as Json
 import SyntaxHighlight as SH
 import SyntaxHighlight.Line as SH exposing (Line, Highlight(..))
+import SyntaxHighlight.Theme as Theme
 import AnimationFrame
 
 
@@ -21,9 +22,12 @@ main =
         }
 
 
+
+-- Model
+
+
 type alias Model =
     { scroll : Scroll
-    , selection : Maybe Selection
     , language : Language
     , elm : LanguageModel
     , javascript : LanguageModel
@@ -32,6 +36,7 @@ type alias Model =
     , lineCountStart : Int
     , lineCount : Maybe Int
     , colorScheme : String
+    , customColorScheme : String
     , highlight : HighlightModel
     }
 
@@ -39,7 +44,6 @@ type alias Model =
 initModel : Model
 initModel =
     { scroll = Scroll 0 0
-    , selection = Nothing
     , language = Elm
     , elm = initLanguageModel elmExample
     , javascript = initLanguageModel javascriptExample
@@ -48,6 +52,7 @@ initModel =
     , lineCountStart = 1
     , lineCount = Just 1
     , colorScheme = "monokai"
+    , customColorScheme = Theme.monokai
     , highlight = HighlightModel (Just Add) 1 3
     }
 
@@ -55,12 +60,6 @@ initModel =
 type alias Scroll =
     { top : Int
     , left : Int
-    }
-
-
-type alias Selection =
-    { start : Int
-    , end : Int
     }
 
 
@@ -154,16 +153,20 @@ xmlExample =
 """
 
 
+
+-- Update
+
+
 type Msg
     = NoOp
     | SetText Language String
     | OnScroll Scroll
     | Frame Time
     | SetLanguage Language
-    | OnSelect Selection
     | ShowLineCount Bool
     | SetLineCountStart Int
     | SetColorScheme String
+    | SetCustomColorScheme String
     | SetHighlightMode (Maybe Highlight)
     | SetHighlightStart Int
     | SetHighlightEnd Int
@@ -205,9 +208,6 @@ update msg ({ elm, xml, javascript, highlight } as model) =
                    )
                 |> flip (,) Cmd.none
 
-        OnSelect selection ->
-            ( model, Cmd.none )
-
         ShowLineCount bool ->
             ( { model
                 | showLineCount = bool
@@ -230,6 +230,11 @@ update msg ({ elm, xml, javascript, highlight } as model) =
 
         SetColorScheme cs ->
             ( { model | colorScheme = cs }
+            , Cmd.none
+            )
+
+        SetCustomColorScheme ccs ->
+            ( { model | customColorScheme = ccs }
             , Cmd.none
             )
 
@@ -281,6 +286,10 @@ updateLangModel lang model langModel =
             { model | javascript = langModel }
 
 
+
+-- View
+
+
 view : Model -> Html Msg
 view ({ language } as model) =
     div []
@@ -308,11 +317,13 @@ textareaStyle { colorScheme } =
 
 
 syntaxTheme : Model -> Html msg
-syntaxTheme { showLineCount, colorScheme } =
+syntaxTheme { colorScheme, customColorScheme } =
     if colorScheme == "monokai" then
         SH.useTheme SH.monokai
-    else
+    else if colorScheme == "github" then
         SH.useTheme SH.github
+    else
+        Html.node "style" [] [ text customColorScheme ]
 
 
 viewLanguage : Language -> Model -> Html Msg
@@ -334,7 +345,11 @@ viewLanguage thisLang ({ language, lineCount } as model) =
                     [ class "view-container"
                     , style
                         [ ( "transform"
-                          , "translate(" ++ toString -langModel.scroll.left ++ "px, " ++ toString -langModel.scroll.top ++ "px)"
+                          , "translate("
+                                ++ toString -langModel.scroll.left
+                                ++ "px, "
+                                ++ toString -langModel.scroll.top
+                                ++ "px)"
                           )
                         , ( "will-change", "transform" )
                         ]
@@ -364,12 +379,6 @@ viewTextarea thisLang codeStr { showLineCount } =
                 (Json.at [ "target", "scrollLeft" ] Json.int)
                 |> Json.map OnScroll
             )
-        , Html.Events.on "select"
-            (Json.map2 Selection
-                (Json.at [ "target", "selectionStart" ] Json.int)
-                (Json.at [ "target", "selectionEnd" ] Json.int)
-                |> Json.map OnSelect
-            )
         ]
         []
 
@@ -385,6 +394,45 @@ getLangModelParser lang model =
 
         Javascript ->
             ( model.javascript, toHtmlJavascript )
+
+
+
+-- Helpers function for Html.Lazy.lazy
+
+
+toHtmlElm : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlElm =
+    toHtml SH.elm
+
+
+toHtmlXml : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlXml =
+    toHtml SH.xml
+
+
+toHtmlJavascript : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlJavascript =
+    toHtml SH.javascript
+
+
+toHtml : (String -> Result x (List Line)) -> Maybe Int -> String -> HighlightModel -> Html Msg
+toHtml parser maybeStart str hlModel =
+    parser str
+        |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
+        |> Result.map (SH.toBlockHtml maybeStart)
+        |> Result.mapError (\x -> text (toString x))
+        |> (\result ->
+                case result of
+                    Result.Ok a ->
+                        a
+
+                    Result.Err x ->
+                        x
+           )
+
+
+
+-- Options
 
 
 viewOptions : Model -> Html Msg
@@ -429,9 +477,14 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
                     ]
                     [ option [ selected (colorScheme == "monokai"), value "monokai" ] [ text "Monokai" ]
                     , option [ selected (colorScheme == "github"), value "github" ] [ text "GitHub" ]
+                    , option [ selected (colorScheme == "custom"), value "custom" ] [ text "Custom" ]
                     ]
                 ]
             ]
+        , if colorScheme == "custom" then
+            customColorScheme model
+          else
+            text ""
         , li []
             [ text "Highlight Lines"
             , viewHighlightOptions model.highlight
@@ -450,6 +503,18 @@ toLanguageType str =
 
         _ ->
             Javascript
+
+
+customColorScheme : Model -> Html Msg
+customColorScheme model =
+    textarea
+        [ defaultValue model.customColorScheme
+        , onInput SetCustomColorScheme
+        , spellcheck False
+        , style [ ( "width", "100%" ) ]
+        , Html.Attributes.rows 10
+        ]
+        []
 
 
 viewHighlightOptions : HighlightModel -> Html Msg
@@ -506,38 +571,3 @@ numberInput labelStr defaultVal msg =
             ]
             []
         ]
-
-
-toHtml : (String -> Result x (List Line)) -> Maybe Int -> String -> HighlightModel -> Html Msg
-toHtml parser maybeStart str hlModel =
-    parser str
-        |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
-        |> Result.map (SH.toBlockHtml maybeStart)
-        |> Result.mapError (\x -> text (toString x))
-        |> (\result ->
-                case result of
-                    Result.Ok a ->
-                        a
-
-                    Result.Err x ->
-                        x
-           )
-
-
-
--- Helpers function for Html.Lazy.lazy
-
-
-toHtmlElm : Maybe Int -> String -> HighlightModel -> Html Msg
-toHtmlElm =
-    toHtml SH.elm
-
-
-toHtmlXml : Maybe Int -> String -> HighlightModel -> Html Msg
-toHtmlXml =
-    toHtml SH.xml
-
-
-toHtmlJavascript : Maybe Int -> String -> HighlightModel -> Html Msg
-toHtmlJavascript =
-    toHtml SH.javascript
