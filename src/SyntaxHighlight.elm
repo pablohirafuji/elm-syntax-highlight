@@ -53,21 +53,21 @@ toInlineHtml =
     View.toInlineHtml
 
 
-{-| Highlight Elm syntax.
+{-| Parse Elm syntax.
 -}
 elm : String -> Result Parser.Error (List Line)
 elm =
     Elm.parse
 
 
-{-| Highlight XML syntax.
+{-| Parse XML syntax.
 -}
 xml : String -> Result Parser.Error (List Line)
 xml =
     Xml.parse
 
 
-{-| Highlight Javascript syntax.
+{-| Parse Javascript syntax.
 -}
 javascript : String -> Result Parser.Error (List Line)
 javascript =
@@ -84,20 +84,21 @@ type Theme
 will be themed according to the chosen `Theme`.
 If you prefer to use CSS external stylesheet, you do **not** need this,
 just copy the theme CSS into your stylesheet.
+All themes can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/src/themes.md).
 -}
 useTheme : Theme -> Html msg
 useTheme (Theme theme) =
     Html.node "style" [] [ text theme ]
 
 
-{-| Monokai inspired theme. CSS link.
+{-| Monokai inspired theme.
 -}
 monokai : Theme
 monokai =
     Theme Theme.monokai
 
 
-{-| GitHub inspired theme. CSS link.
+{-| GitHub inspired theme.
 -}
 github : Theme
 github =
