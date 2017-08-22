@@ -7,7 +7,7 @@ set -e # Exit with nonzero exit code if anything fails
 SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
 TEMP_FOLDER="temp"
-ENCRYPTION_LABEL="adc9db9628ec"
+ENCRYPTION_LABEL="2e639d5f7f73"
 
 echo "==> Building and deploying demo to gh-pages <=="
 
