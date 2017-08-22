@@ -84,7 +84,7 @@ type Theme
 will be themed according to the chosen `Theme`.
 If you prefer to use CSS external stylesheet, you do **not** need this,
 just copy the theme CSS into your stylesheet.
-All themes can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/src/themes.md).
+All themes can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md).
 -}
 useTheme : Theme -> Html msg
 useTheme (Theme theme) =

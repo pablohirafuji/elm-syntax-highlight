@@ -9,7 +9,7 @@ You can define the theme either by copying and pasting the theme styles into you
 
 ### Copying and pasting the theme
 
-The theme and required styles can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/src/themes.md).
+The theme and required styles can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md).
 
 ### Using `useTheme` helper
 
@@ -21,10 +21,10 @@ import SyntaxHighlight exposing (useTheme, monokai, elm, toBlockHtml)
 view : Model -> Html msg
 view model =
     div []
-		[ useTheme monokai
-		, elm model.elmCode
-			|> Result.map (toBlockHtml (Just 1))
-			|> Result.withDefault
-				(pre [] [ code [] [ text model.elmCode ]])
+        [ useTheme monokai
+        , elm model.elmCode
+            |> Result.map (toBlockHtml (Just 1))
+            |> Result.withDefault
+                (pre [] [ code [] [ text model.elmCode ]])
 		]
 ```
