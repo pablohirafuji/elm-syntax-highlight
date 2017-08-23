@@ -8,7 +8,7 @@ module SyntaxHighlight.Language.Xml
         )
 
 import Char
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
 import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
 import SyntaxHighlight.Line.Helpers exposing (toLines, normal)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
@@ -35,19 +35,21 @@ parse =
 
 toSyntax : String -> Result Error (List Syntax)
 toSyntax =
-    Parser.run (mainLoop [])
+    mainLoop []
+        |> repeat zeroOrMore
+        |> map (List.reverse >> List.concat)
+        |> Parser.run
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
 mainLoop revSyntaxes =
     oneOf
-        [ whitespace |> consThen mainLoop revSyntaxes
-        , comment |> addThen mainLoop revSyntaxes
+        [ whitespace |> consThen succeed revSyntaxes
+        , comment |> addThen succeed revSyntaxes
         , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
             |> map ((,) Normal)
-            |> consThen mainLoop revSyntaxes
+            |> consThen succeed revSyntaxes
         , openTag revSyntaxes
-        , end revSyntaxes
         ]
 
 
@@ -64,13 +66,6 @@ openTag revSyntaxes =
         |> consThen tag revSyntaxes
 
 
-endTag : List Syntax -> Parser (List Syntax)
-endTag revSyntaxes =
-    keep oneOrMore ((==) '>')
-        |> map ((,) Normal)
-        |> consThen mainLoop revSyntaxes
-
-
 tag : List Syntax -> Parser (List Syntax)
 tag revSyntaxes =
     oneOf
@@ -83,13 +78,20 @@ tag revSyntaxes =
         ]
 
 
+endTag : List Syntax -> Parser (List Syntax)
+endTag revSyntaxes =
+    keep oneOrMore ((==) '>')
+        |> map ((,) Normal)
+        |> consThen succeed revSyntaxes
+
+
 chompUntilEndTag : List Syntax -> Parser (List Syntax)
 chompUntilEndTag revSyntaxes =
     ignore zeroOrMore (\c -> c /= '>' && not (isLineBreak c))
         |> thenIgnore zeroOrMore ((==) '>')
         |> source
         |> map ((,) Normal)
-        |> consThen mainLoop revSyntaxes
+        |> consThen succeed revSyntaxes
 
 
 isStartTagChar : Char -> Bool
@@ -113,7 +115,7 @@ attributeLoop revSyntaxes =
         , keep oneOrMore (\c -> not (isWhitespace c) && c /= '>')
             |> map ((,) Normal)
             |> consThen attributeLoop revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -141,7 +143,7 @@ attributeValueLoop revSyntaxes =
         [ whitespace |> consThen attributeValueLoop revSyntaxes
         , attributeValue |> addThen attributeLoop revSyntaxes
         , endTag revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -221,12 +223,6 @@ lineBreak =
 lineBreakList : Parser (List Syntax)
 lineBreakList =
     repeat oneOrMore lineBreak
-
-
-end : List Syntax -> Parser (List Syntax)
-end revSyntaxes =
-    Parser.end
-        |> map (always revSyntaxes)
 
 
 toFragment : Syntax -> Fragment
