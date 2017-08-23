@@ -1,7 +1,14 @@
-module SyntaxHighlight.Language.Javascript exposing (parse)
+module SyntaxHighlight.Language.Javascript
+    exposing
+        ( parse
+          -- Exposing just for tests purpose
+        , toSyntax
+          -- Exposing just for tests purpose
+        , SyntaxType(..)
+        )
 
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
 import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
 import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable, addThen, consThen)
@@ -26,25 +33,32 @@ type SyntaxType
 
 parse : String -> Result Error (List Line)
 parse =
-    Parser.run (mainLoop [])
+    toSyntax
         >> Result.map (toLines LineBreak toFragment)
+
+
+toSyntax : String -> Result Error (List Syntax)
+toSyntax =
+    mainLoop []
+        |> repeat zeroOrMore
+        |> map (List.reverse >> List.concat)
+        |> Parser.run
 
 
 mainLoop : List Syntax -> Parser (List Syntax)
 mainLoop revSyntaxes =
     oneOf
-        [ whitespaceOrComment mainLoop revSyntaxes
+        [ whitespaceOrComment succeed revSyntaxes
         , stringLiteral
-            |> addThen mainLoop revSyntaxes
+            |> addThen succeed revSyntaxes
         , oneOf
             [ operatorChar
             , groupChar
             , number
             ]
-            |> consThen mainLoop revSyntaxes
+            |> consThen succeed revSyntaxes
         , keep oneOrMore isIdentifierNameChar
             |> andThen (keywordParser revSyntaxes)
-        , end revSyntaxes
         ]
 
 
@@ -55,15 +69,15 @@ keywordParser revSyntaxes n =
     else if n == "class" then
         classStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
     else if n == "this" || n == "super" then
-        mainLoop (( Param, n ) :: revSyntaxes)
+        succeed (( Param, n ) :: revSyntaxes)
     else if n == "constructor" then
         functionStatementLoop (( Function, n ) :: revSyntaxes)
     else if isKeyword n then
-        mainLoop (( Keyword, n ) :: revSyntaxes)
+        succeed (( Keyword, n ) :: revSyntaxes)
     else if isDeclarationKeyword n then
-        mainLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+        succeed (( DeclarationKeyword, n ) :: revSyntaxes)
     else if isLiteralKeyword n then
-        mainLoop (( LiteralKeyword, n ) :: revSyntaxes)
+        succeed (( LiteralKeyword, n ) :: revSyntaxes)
     else
         functionEvalLoop n revSyntaxes []
 
@@ -76,7 +90,7 @@ functionStatementLoop revSyntaxes =
             |> andThen (\n -> functionStatementLoop (( Function, n ) :: revSyntaxes))
         , symbol "("
             |> andThen (\n -> argLoop (( Normal, "(" ) :: revSyntaxes))
-        , mainLoop revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -87,14 +101,14 @@ functionEvalLoop identifier preSyntaxList postSyntaxList =
         , symbol "("
             |> andThen
                 (\n ->
-                    mainLoop
+                    succeed
                         ((( Normal, "(" ) :: postSyntaxList)
                             ++ (( FunctionEval, identifier )
                                     :: preSyntaxList
                                )
                         )
                 )
-        , mainLoop (postSyntaxList ++ (( Normal, identifier ) :: preSyntaxList))
+        , succeed (postSyntaxList ++ (( Normal, identifier ) :: preSyntaxList))
         ]
 
 
@@ -104,8 +118,8 @@ classStatementLoop revSyntaxes =
         [ whitespaceOrComment classStatementLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
             |> map ((,) Function)
-            |> consThen mainLoop revSyntaxes
-        , mainLoop revSyntaxes
+            |> consThen succeed revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -118,8 +132,8 @@ argLoop revSyntaxes =
         , keep oneOrMore (\c -> c == '/' || c == ',')
             |> andThen (\n -> argLoop (( Normal, n ) :: revSyntaxes))
         , symbol ")"
-            |> andThen (\n -> mainLoop (( Normal, ")" ) :: revSyntaxes))
-        , end revSyntaxes
+            |> andThen (\_ -> succeed (( Normal, ")" ) :: revSyntaxes))
+        , succeed revSyntaxes
         ]
 
 
@@ -413,12 +427,6 @@ jsEscapable =
         |> source
         |> map ((,) LiteralKeyword)
         |> repeat oneOrMore
-
-
-end : List Syntax -> Parser (List Syntax)
-end revSyntaxes =
-    Parser.end
-        |> map (always revSyntaxes)
 
 
 toFragment : Syntax -> Fragment
