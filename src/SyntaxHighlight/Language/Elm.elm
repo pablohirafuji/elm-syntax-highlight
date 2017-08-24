@@ -9,7 +9,7 @@ module SyntaxHighlight.Language.Elm
 
 import Char
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat, succeed)
 import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
 import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
@@ -42,20 +42,24 @@ parse =
 
 toSyntax : String -> Result Error (List Syntax)
 toSyntax =
-    Parser.run (lineStart functionBody [])
+    lineStart []
+        |> repeat zeroOrMore
+        |> map (List.reverse >> List.concat)
+        |> Parser.run
 
 
-lineStart : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
-lineStart continueFunction revSyntaxes =
+lineStart : List Syntax -> Parser (List Syntax)
+lineStart revSyntaxes =
     oneOf
-        [ whitespaceOrComment continueFunction revSyntaxes
-        , variable |> andThen (lineStartVariable continueFunction revSyntaxes)
-        , functionBody revSyntaxes
+        [ whitespaceOrComment succeed revSyntaxes
+        , variable |> andThen (lineStartVariable revSyntaxes)
+        , stringLiteral |> addThen functionBody revSyntaxes
+        , functionBodyContent |> consThen functionBody revSyntaxes
         ]
 
 
-lineStartVariable : (List Syntax -> Parser (List Syntax)) -> List Syntax -> String -> Parser (List Syntax)
-lineStartVariable continueFunction revSyntaxes n =
+lineStartVariable : List Syntax -> String -> Parser (List Syntax)
+lineStartVariable revSyntaxes n =
     if n == "module" || n == "import" then
         moduleDeclaration (( Keyword, n ) :: revSyntaxes)
     else if n == "port" then
@@ -84,7 +88,7 @@ moduleDeclaration revSyntaxes =
             , keep oneOrMore modDecIsNotRelevant |> map ((,) Normal)
             ]
             |> consThen moduleDeclaration revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -114,7 +118,7 @@ modDecParentheses revSyntaxes =
         , symbol "("
             |> map (always ( Normal, "(" ))
             |> consThen (modDecParNest 0) revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -144,7 +148,7 @@ modDecParNest nestLevel revSyntaxes =
             , keep oneOrMore (not << mdpnIsSpecialChar) |> map ((,) Normal)
             ]
             |> consThen (modDecParNest nestLevel) revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -194,7 +198,7 @@ fnSigContent revSyntaxes =
     oneOf
         [ whitespaceOrComment fnSigContent revSyntaxes
         , fnSigContentHelp |> consThen fnSigContent revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -228,7 +232,7 @@ functionBody revSyntaxes =
         [ whitespaceOrComment functionBody revSyntaxes
         , stringLiteral |> addThen functionBody revSyntaxes
         , functionBodyContent |> consThen functionBody revSyntaxes
-        , end revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -503,8 +507,17 @@ whitespaceOrComment : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Pa
 whitespaceOrComment continueFunction revSyntaxes =
     oneOf
         [ space |> consThen continueFunction revSyntaxes
-        , lineBreak |> consThen (lineStart continueFunction) revSyntaxes
+        , lineBreak
+            |> consThen (checkContext continueFunction) revSyntaxes
         , comment |> addThen continueFunction revSyntaxes
+        ]
+
+
+checkContext : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
+checkContext continueFunction revSyntaxes =
+    oneOf
+        [ whitespaceOrComment continueFunction revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
@@ -531,11 +544,6 @@ elmEscapable =
         |> source
         |> map ((,) Capitalized)
         |> repeat oneOrMore
-
-
-end : List Syntax -> Parser (List Syntax)
-end revSyntaxes =
-    Parser.end |> map (always revSyntaxes)
 
 
 toFragment : Syntax -> Fragment
