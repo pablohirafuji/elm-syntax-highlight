@@ -33,6 +33,9 @@ install:
       make && make install;
       cd ..;
     fi
+  - cd tests
+  - travis_retry elm-package install --yes
+  - cd ..
 script:
   - $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-test tests/Main.elm
-  - bash ./demo/deploy.sh
+after_success: bash ./demo/deploy.sh
