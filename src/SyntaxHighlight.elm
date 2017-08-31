@@ -9,6 +9,7 @@ module SyntaxHighlight
         , useTheme
         , monokai
         , github
+        , oneDark
         )
 
 {-| Syntax highlighting in Elm.
@@ -23,7 +24,7 @@ module SyntaxHighlight
 
 ## Themes
 
-@docs Theme, useTheme, monokai, github
+@docs Theme, useTheme, monokai, github, oneDark
 
 -}
 
@@ -103,3 +104,10 @@ monokai =
 github : Theme
 github =
     Theme Theme.github
+
+
+{-| Atom One Dark inspired theme.
+-}
+oneDark : Theme
+oneDark =
+    Theme Theme.oneDark

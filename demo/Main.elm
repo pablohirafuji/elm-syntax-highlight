@@ -304,26 +304,33 @@ view ({ language } as model) =
 
 textareaStyle : Model -> String
 textareaStyle { colorScheme } =
-    if colorScheme == "monokai" then
-        """.textarea {caret-color: #f8f8f2;}
-.textarea::selection {
-    background-color: rgba(255,255,255,0.2);
-}"""
-    else
-        """.textarea {caret-color: #24292e;}
-.textarea::selection {
-    background-color: rgba(0,0,0,0.2);
-}"""
+    let
+        style a b =
+            String.join "\n"
+                [ ".textarea {caret-color: " ++ a ++ ";}"
+                , ".textarea::selection { background-color: " ++ b ++ "; }"
+                ]
+    in
+        if List.member colorScheme [ "monokai", "oneDark" ] then
+            style "#f8f8f2" "rgba(255,255,255,0.2)"
+        else
+            style "#24292e" "rgba(0,0,0,0.2)"
 
 
 syntaxTheme : Model -> Html msg
 syntaxTheme { colorScheme, customColorScheme } =
-    if colorScheme == "monokai" then
-        SH.useTheme SH.monokai
-    else if colorScheme == "github" then
-        SH.useTheme SH.github
-    else
-        Html.node "style" [] [ text customColorScheme ]
+    case colorScheme of
+        "monokai" ->
+            SH.useTheme SH.monokai
+
+        "github" ->
+            SH.useTheme SH.github
+
+        "oneDark" ->
+            SH.useTheme SH.oneDark
+
+        _ ->
+            Html.node "style" [] [ text customColorScheme ]
 
 
 viewLanguage : Language -> Model -> Html Msg
@@ -435,6 +442,16 @@ toHtml parser maybeStart str hlModel =
 -- Options
 
 
+viewColorOptions : Model -> List ( String, String ) -> List (Html Msg)
+viewColorOptions { colorScheme } =
+    List.map
+        (\( scheme, name ) ->
+            option
+                [ selected (colorScheme == scheme), value scheme ]
+                [ text name ]
+        )
+
+
 viewOptions : Model -> Html Msg
 viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) =
     ul []
@@ -475,10 +492,14 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
                     [ Html.Events.on "change"
                         (Json.map SetColorScheme (Json.at [ "target", "value" ] Json.string))
                     ]
-                    [ option [ selected (colorScheme == "monokai"), value "monokai" ] [ text "Monokai" ]
-                    , option [ selected (colorScheme == "github"), value "github" ] [ text "GitHub" ]
-                    , option [ selected (colorScheme == "custom"), value "custom" ] [ text "Custom" ]
-                    ]
+                  <|
+                    viewColorOptions
+                        model
+                        [ ( "monokai", "Monokai" )
+                        , ( "github", "GitHub" )
+                        , ( "oneDark", "Atom One Dark" )
+                        , ( "custom", "Custom" )
+                        ]
                 ]
             ]
         , if colorScheme == "custom" then

@@ -2,6 +2,17 @@
 
 Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
+## Running demo
+
+To run demo locally you have to have [elm-live](https://github.com/tomekwi/elm-live) installed.
+
+```shell
+cd demo
+make start
+```
+
+Demo will be available at http://localhost:8000
+
 
 ## Themes
 

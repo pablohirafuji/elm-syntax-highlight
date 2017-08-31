@@ -2,6 +2,7 @@ module SyntaxHighlight.Theme
     exposing
         ( monokai
         , github
+        , oneDark
         )
 
 -- Monokai inspired theme
@@ -120,4 +121,81 @@ github =
 
 .elmsh7 {
     color: #795da3;
+}"""
+
+
+
+{-
+   Atom One Dark inspired theme
+   https://github.com/atom/one-dark-syntax
+
+   base:    #282c34
+   mono-1:  #abb2bf
+   mono-2:  #818896
+   mono-3:  #5c6370
+   hue-1:   #56b6c2
+   hue-2:   #61aeee
+   hue-3:   #c678dd
+   hue-4:   #98c379
+   hue-5:   #e06c75
+   hue-5-2: #be5046
+   hue-6:   #d19a66
+   hue-6-2: #e6c07b
+-}
+
+
+oneDark : String
+oneDark =
+    """
+.elmsh {
+  background: #282c34;
+  color: #abb2bf;
+}
+
+.elmsh-hl {
+  background: rgba(229,231,235, 0.1);
+}
+
+.elmsh-add {
+  background: rgba(40,124,82, 0.4);
+}
+
+.elmsh-del {
+  background: rgba(136,64,67, 0.4);
+}
+
+.elmsh-strong {
+  font-weight: bold;
+}
+
+.elmsh-emphasis {
+  font-style: italic;
+}
+
+.elmsh1 {
+  color: #5c6370;
+  font-style: italic
+}
+.elmsh2 {
+  color: #98c379;
+}
+
+.elmsh3 {
+  color: #c678dd;
+}
+
+.elmsh4 {
+  color: #c678dd;
+}
+
+.elmsh5 {
+  color: #61aeee;
+}
+
+.elmsh6 {
+  color: #c678dd;
+}
+
+.elmsh7 {
+  color: #abb2bf;
 }"""
