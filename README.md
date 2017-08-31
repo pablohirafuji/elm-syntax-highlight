@@ -46,5 +46,5 @@ view model =
             |> Result.map (toBlockHtml (Just 1))
             |> Result.withDefault
                 (pre [] [ code [] [ text model.elmCode ]])
-		]
+        ]
 ```
