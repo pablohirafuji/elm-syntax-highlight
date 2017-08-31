@@ -30,15 +30,20 @@ git rm -rf . || exit 1
 cd ..
 
 # Run our compile script
-echo "Compiling into ${TEMP_FOLDER}/"
+echo "Compiling demo into ${TEMP_FOLDER}/"
 npm install uglify-js -g
 cd demo
 elm package install --yes
 $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm make Main.elm --output ../$TEMP_FOLDER/elm.js
+# Run theme compile script
+npm install -g elm-static-html
+$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-static-html --filename Themes.elm --output ../$TEMP_FOLDER/themes.html
 cd ..
 cp demo/index.html $TEMP_FOLDER/index.html
 cd $TEMP_FOLDER
 uglifyjs elm.js --output elm.js
+
+
 
 # Now let's go have some fun with the cloned repo
 git config user.name "Travis CI"

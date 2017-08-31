@@ -1,9 +1,22 @@
 module SyntaxHighlight.Theme
     exposing
-        ( monokai
+        ( all
+        , monokai
         , github
         , oneDark
         )
+
+-- Add all themes name and code here to show in the Themes page
+
+
+all : List ( String, String )
+all =
+    [ ( "Monokai", monokai )
+    , ( "GitHub", github )
+    , ( "One Dark", oneDark )
+    ]
+
+
 
 -- Monokai inspired theme
 
