@@ -34,12 +34,11 @@ echo "Compiling into ${TEMP_FOLDER}/"
 npm install uglify-js -g
 cd demo
 elm package install --yes
-$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm make Main.elm --output ../$TEMP_FOLDER/main.js
+$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm make Main.elm --output ../$TEMP_FOLDER/elm.js
 cd ..
 cp demo/index.html $TEMP_FOLDER/index.html
 cd $TEMP_FOLDER
-uglifyjs main.js --output main.js
-sed -i -e 's/\/_compile\/Main.elm/main.js/g' index.html
+uglifyjs elm.js --output elm.js
 
 # Now let's go have some fun with the cloned repo
 git config user.name "Travis CI"
