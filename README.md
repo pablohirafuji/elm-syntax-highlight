@@ -28,3 +28,14 @@ view model =
                 (pre [] [ code [] [ text model.elmCode ]])
 		]
 ```
+
+### Running demo
+
+To run demo locally you have to have `elm-live` installed.
+
+```shell
+cd demo
+make start
+```
+
+Demo will be available at http://localhost:8000

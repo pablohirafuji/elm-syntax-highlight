@@ -1,112 +1,112 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Elm Syntax Highlight</title>
-	<style type="text/css">
-		body {
-			margin: 40px auto;
-			max-width: 650px;
-			line-height: 1.6;
-			font-size: 18px;
-			color: #444;
-			padding: 0 10px;
-			text-align: center;
-		}
-		h1,h2,h3 {
-			line-height: 1.2
-		}
-		h1 {
-			padding-bottom: 0;
-			margin-bottom: 0;
-		}
-		.subheading {
-			margin-top: 0;
-		}
-		ul {
-			text-align: left;
-		}
-		.container {
-			position: relative;
-			overflow: hidden;
-			padding: 0;
-			margin: 0;
-			text-align: left;
-		}
-		.textarea, .view-container {
-			box-sizing: border-box;
-			font-size: 1rem;
-			line-height: 1.2;
-			width: 100%;
-			height: 100%;
-			height: 250px;
-			font-family: monospace;
-			letter-spacing: normal;
-			word-spacing: normal;
-			padding: 0;
-			margin: 0;
-			border: 0;
-			background: transparent;
-			white-space: pre;
-		}
-		.textarea {
-			color: rgba(0,0,0,0);
-			resize: none;
-			z-index: 2;
-			position: relative;
-			padding: 10px;
-		}
-		.textarea-lc {
-			padding-left: 70px;
-		}
-		.textarea:focus {
-			outline: none;
-		}
-		.view-container {
-			position: absolute;
-			top: 0;
-			left: 0;
-			pointer-events: none;
-			z-index:1;
-		}
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Elm Syntax Highlight</title>
+		<style type="text/css">
+			body {
+				margin: 40px auto;
+				max-width: 650px;
+				line-height: 1.6;
+				font-size: 18px;
+				color: #444;
+				padding: 0 10px;
+				text-align: center;
+			}
+			h1,h2,h3 {
+				line-height: 1.2
+			}
+			h1 {
+				padding-bottom: 0;
+				margin-bottom: 0;
+			}
+			.subheading {
+				margin-top: 0;
+			}
+			ul {
+				text-align: left;
+			}
+			.container {
+				position: relative;
+				overflow: hidden;
+				padding: 0;
+				margin: 0;
+				text-align: left;
+			}
+			.textarea, .view-container {
+				box-sizing: border-box;
+				font-size: 1rem;
+				line-height: 1.2;
+				width: 100%;
+				height: 100%;
+				height: 250px;
+				font-family: monospace;
+				letter-spacing: normal;
+				word-spacing: normal;
+				padding: 0;
+				margin: 0;
+				border: 0;
+				background: transparent;
+				white-space: pre;
+			}
+			.textarea {
+				color: rgba(0,0,0,0);
+				resize: none;
+				z-index: 2;
+				position: relative;
+				padding: 10px;
+			}
+			.textarea-lc {
+				padding-left: 70px;
+			}
+			.textarea:focus {
+				outline: none;
+			}
+			.view-container {
+				position: absolute;
+				top: 0;
+				left: 0;
+				pointer-events: none;
+				z-index:1;
+			}
 
-		/* Elm Syntax Highlight CSS */
-		pre.elmsh {
-			padding: 10px;
-			margin: 0;
-			text-align: left;
-			overflow: auto;
-		}
-		code.elmsh {
-			padding: 0;
-		}
-		.elmsh-line:before {
-			content: attr(data-elmsh-lc);
-			display: inline-block;
-			text-align: right;
-			width: 40px;
-			padding: 0 20px 0 0;
-			opacity: 0.3;
-		}
+			/* Elm Syntax Highlight CSS */
+			pre.elmsh {
+				padding: 10px;
+				margin: 0;
+				text-align: left;
+				overflow: auto;
+			}
+			code.elmsh {
+				padding: 0;
+			}
+			.elmsh-line:before {
+				content: attr(data-elmsh-lc);
+				display: inline-block;
+				text-align: right;
+				width: 40px;
+				padding: 0 20px 0 0;
+				opacity: 0.3;
+			}
 
-		/* Demo specifics */
-		pre.elmsh {
-			overflow: visible;
-		}
-	</style>
-</head>
-<body>
-	<h1>Elm Syntax Highlight</h1>
-	<p class="subheading"><!-- <a href="http://package.elm-lang.org/packages/pablohirafuji/elm-syntax-highlight/latest">Package</a> /  --><a href="https://github.com/pablohirafuji/elm-syntax-highlight">GitHub</a> / <a href="https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/demo/Main.elm">Source</a></p>
-	<div id="main"><h2>Loading...</h2></div>
-	<script src="/_compile/Main.elm"></script>
-	<script>
+			/* Demo specifics */
+			pre.elmsh {
+				overflow: visible;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Elm Syntax Highlight</h1>
+		<p class="subheading"><!-- <a href="http://package.elm-lang.org/packages/pablohirafuji/elm-syntax-highlight/latest">Package</a> /  --><a href="https://github.com/pablohirafuji/elm-syntax-highlight">GitHub</a> / <a href="https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/demo/Main.elm">Source</a></p>
+		<div id="main"><h2>Loading...</h2></div>
+		<script src="elm.js"></script>
+		<script>
 		var node = document.getElementById('main');
 		while (node.firstChild) {
-				node.removeChild(node.firstChild);
+  		node.removeChild(node.firstChild);
 		}
 		var app = Elm.Main.embed(node);
-	</script>
-</body>
+		</script>
+	</body>
 </html>
