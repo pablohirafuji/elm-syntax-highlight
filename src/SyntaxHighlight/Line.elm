@@ -19,7 +19,7 @@ module SyntaxHighlight.Line
 -}
 
 
-{-| A line.
+{-| A line holds information about its fragments and if is highlighted in any way.
 -}
 type alias Line =
     { fragments : List Fragment
@@ -27,7 +27,7 @@ type alias Line =
     }
 
 
-{-| A fragment.
+{-| A fragment holds information about the text being styled, the color to apply and if it is emphasis/strong.
 -}
 type alias Fragment =
     { text : String
@@ -37,7 +37,7 @@ type alias Fragment =
     }
 
 
-{-| Highlight type.
+{-| Highlight type. `Normal` will highlight the line in a way to differentiate it from the rest, like github's yellow background. `Add` will highlight in a manner that gives the ideia of new content added. `Delete` will highlight in a manner that gives the ideia of deleted content. The specific styles will depend on the `Theme` chosen.
 -}
 type Highlight
     = Normal
