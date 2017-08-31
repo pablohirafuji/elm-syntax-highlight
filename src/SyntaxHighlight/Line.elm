@@ -89,16 +89,16 @@ The common uses of the color are the following:
   - Color3: Keyword, tag, operator symbol (=+-*/...)
   - Color4: Keyword, type signature, group symbol ({}(),)
   - Color5: Function, attribute name
-  - Color6: Literal keyword
+  - Color6: Literal keyword, number
   - Color7: Argument, parameter
 
 -}
 type Color
     = Default
-    | Color1 -- Comment
-    | Color2 -- Literal string, attribute value
-    | Color3 -- Keyword, tag, operator symbol (=+-*/...)
-    | Color4 -- Keyword, type signature, group symbol ({}(),)
-    | Color5 -- Function, attribute name
-    | Color6 -- Literal keyword
-    | Color7 -- Argument, parameter
+    | Color1
+    | Color2
+    | Color3
+    | Color4
+    | Color5
+    | Color6
+    | Color7

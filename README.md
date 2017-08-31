@@ -6,9 +6,18 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 
 To run demo locally you have to have [elm-live](https://github.com/tomekwi/elm-live) installed.
 
+### Linux
+
 ```shell
 cd demo
 make start
+```
+
+### Windows
+
+```shell
+cd demo
+elm-live Main.elm --output=elm.js --pushstate --open --debug --dir=./
 ```
 
 Demo will be available at http://localhost:8000
