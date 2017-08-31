@@ -3,6 +3,7 @@
 - [Required Styles](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#required-styles)
 - [Monokai](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#monokai)
 - [GitHub](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#github)
+- [One Dark](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#one-dark)
 
 ## Required styles
 
@@ -135,5 +136,62 @@ code.elmsh {
 
 .elmsh7 {
     color: #795da3;
+}
+```
+
+## One Dark
+
+```css
+.elmsh {
+  background: #282c34;
+  color: #abb2bf;
+}
+
+.elmsh-hl {
+  background: rgba(229,231,235, 0.1);
+}
+
+.elmsh-add {
+  background: rgba(40,124,82, 0.4);
+}
+
+.elmsh-del {
+  background: rgba(136,64,67, 0.4);
+}
+
+.elmsh-strong {
+  font-weight: bold;
+}
+
+.elmsh-emphasis {
+  font-style: italic;
+}
+
+.elmsh1 {
+  color: #5c6370;
+  font-style: italic
+}
+.elmsh2 {
+  color: #98c379;
+}
+
+.elmsh3 {
+  color: #c678dd;
+}
+
+.elmsh4 {
+  color: #c678dd;
+}
+
+.elmsh5 {
+  color: #61aeee;
+}
+
+.elmsh6 {
+  color: #c678dd;
+}
+
+.elmsh7 {
+  color: #abb2bf;
 }
 ```

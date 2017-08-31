@@ -497,7 +497,7 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
                         model
                         [ ( "monokai", "Monokai" )
                         , ( "github", "GitHub" )
-                        , ( "oneDark", "Atom One Dark" )
+                        , ( "oneDark", "One Dark" )
                         , ( "custom", "Custom" )
                         ]
                 ]
