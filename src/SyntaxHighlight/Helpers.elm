@@ -1,6 +1,7 @@
 module SyntaxHighlight.Helpers
     exposing
         ( isWhitespace
+        , whitespaceCharSet
         , isSpace
         , isLineBreak
         , number
@@ -16,12 +17,21 @@ module SyntaxHighlight.Helpers
 
 import Set exposing (Set)
 import Char
-import Parser exposing (Parser, (|.), oneOf, keep, Count(..), oneOrMore, symbol, ignore, zeroOrMore, lazy, fail, source, map, andThen)
+import Parser exposing (Parser, (|.), oneOf, keep, Count(..), oneOrMore, symbol, ignore, zeroOrMore, lazy, fail, source, map, andThen, delayedCommit)
 
 
 isWhitespace : Char -> Bool
 isWhitespace c =
     isSpace c || isLineBreak c
+
+
+whitespaceCharSet : Set Char
+whitespaceCharSet =
+    Set.fromList
+        [ ' '
+        , '\t'
+        , '\n'
+        ]
 
 
 isSpace : Char -> Bool
@@ -36,6 +46,14 @@ isLineBreak c =
 
 number : Parser ()
 number =
+    oneOf
+        [ positiveNumber
+        , delayedCommit (symbol "-") positiveNumber
+        ]
+
+
+positiveNumber : Parser ()
+positiveNumber =
     ignore oneOrMore isNumber
 
 

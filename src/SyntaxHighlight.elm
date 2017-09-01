@@ -5,6 +5,7 @@ module SyntaxHighlight
         , elm
         , xml
         , javascript
+        , css
         , Theme
         , useTheme
         , monokai
@@ -21,7 +22,7 @@ module SyntaxHighlight
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs elm, xml, javascript
+@docs elm, xml, javascript, css
 
 
 ## Themes
@@ -37,6 +38,7 @@ import SyntaxHighlight.View as View
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Language.Javascript as Javascript
+import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Theme as Theme
 
 
@@ -75,6 +77,13 @@ xml =
 javascript : String -> Result Parser.Error (List Line)
 javascript =
     Javascript.parse
+
+
+{-| Parse CSS syntax.
+-}
+css : String -> Result Parser.Error (List Line)
+css =
+    Css.parse
 
 
 {-| A theme defines the background and syntax colors.

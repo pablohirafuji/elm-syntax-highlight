@@ -1,10 +1,17 @@
-module SyntaxHighlight.Language.Css exposing (parse)
+module SyntaxHighlight.Language.Css
+    exposing
+        ( parse
+          -- Exposing just for tests purpose
+        , toSyntax
+          -- Exposing just for tests purpose
+        , SyntaxType(..)
+        )
 
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
 import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
-import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable, addThen, consThen)
+import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis)
+import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, whitespaceCharSet, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen, escapable, isEscapable)
 
 
 type alias Syntax =
@@ -15,203 +22,385 @@ type SyntaxType
     = Normal
     | Comment
     | String
-    | Element
+    | Selector Selector
+    | Property
+    | PropertyValue
+    | Number
+    | Unit
+    | LineBreak
+
+
+type Selector
+    = Element
     | Id
     | Class
-    | Attribute
+    | Combinator
+    | Universal
+    | AttributeSelector AttributeSelector
+    | PseudoElement
+    | PseudoClass
+
+
+type AttributeSelector
+    = AttributeName
     | AttributeValue
-    | Number
-    | Grandeza
-    | LineBreak
+    | AttributeOperator
 
 
 parse : String -> Result Error (List Line)
 parse =
-    Parser.run (mainLoop [])
+    toSyntax
         >> Result.map (toLines LineBreak toFragment)
 
 
-mainLoop : List Syntax -> Parser (List Syntax)
-mainLoop revSyntaxes =
+toSyntax : String -> Result Error (List Syntax)
+toSyntax =
+    mainLoop
+        |> repeat zeroOrMore
+        |> map (List.reverse >> List.concat)
+        |> Parser.run
+
+
+mainLoop : Parser (List Syntax)
+mainLoop =
     oneOf
-        [ whitespaceOrComment mainLoop revSyntaxes
-        , stringLiteral
-            |> addThen mainLoop revSyntaxes
-        , oneOf
-            [ operatorChar
-            , groupChar
-            , number
+        [ whitespaceOrComment
+        , selector
+        , declarationBlock
+        , keep oneOrMore (\c -> c == ',' || c == '}' || c == '/' || c == ']')
+            |> map ((,) Normal >> List.singleton)
+        ]
+
+
+
+-- Selectors
+
+
+selector : Parser (List Syntax)
+selector =
+    oneOf
+        [ oneOf
+            [ id
+            , class
+            , element
+            , universal
+            , combinator
+            , pseudoElement
+            , pseudoClass
             ]
-            |> consThen mainLoop revSyntaxes
-        , keep oneOrMore isIdentifierNameChar
-            |> andThen (keywordParser revSyntaxes)
-        , end revSyntaxes
+            |> map (Tuple.mapFirst Selector >> List.singleton)
+        , attributeSelector
         ]
 
 
-keywordParser : List Syntax -> String -> Parser (List Syntax)
-keywordParser revSyntaxes n =
-    if n == "function" || n == "static" then
-        functionStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
-    else if n == "class" then
-        classStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
-    else if n == "this" || n == "super" then
-        mainLoop (( Param, n ) :: revSyntaxes)
-    else if n == "constructor" then
-        functionStatementLoop (( Function, n ) :: revSyntaxes)
-    else if isKeyword n then
-        mainLoop (( Keyword, n ) :: revSyntaxes)
-    else if isDeclarationKeyword n then
-        mainLoop (( DeclarationKeyword, n ) :: revSyntaxes)
-    else if isLiteralKeyword n then
-        mainLoop (( LiteralKeyword, n ) :: revSyntaxes)
-    else
-        functionEvalLoop n revSyntaxes []
+id : Parser ( Selector, String )
+id =
+    symbol "#"
+        |> thenIgnore zeroOrMore isSelectorNameChar
+        |> source
+        |> map ((,) Id)
 
 
-functionStatementLoop : List Syntax -> Parser (List Syntax)
-functionStatementLoop revSyntaxes =
+class : Parser ( Selector, String )
+class =
+    symbol "."
+        |> thenIgnore zeroOrMore isSelectorNameChar
+        |> source
+        |> map ((,) Class)
+
+
+element : Parser ( Selector, String )
+element =
+    keep oneOrMore isSelectorNameChar
+        |> map ((,) Element)
+
+
+universal : Parser ( Selector, String )
+universal =
+    symbol "*"
+        |> map (always ( Universal, "*" ))
+
+
+combinator : Parser ( Selector, String )
+combinator =
     oneOf
-        [ whitespaceOrComment functionStatementLoop revSyntaxes
-        , keep oneOrMore isIdentifierNameChar
-            |> andThen (\n -> functionStatementLoop (( Function, n ) :: revSyntaxes))
-        , symbol "("
-            |> andThen (\n -> argLoop (( Normal, "(" ) :: revSyntaxes))
-        , mainLoop revSyntaxes
+        [ symbol "+"
+        , symbol "~"
+        , symbol ">"
         ]
+        |> source
+        |> map ((,) Combinator)
 
 
-functionEvalLoop : String -> List Syntax -> List Syntax -> Parser (List Syntax)
-functionEvalLoop identifier preSyntaxList postSyntaxList =
-    oneOf
-        [ whitespaceOrComment (functionEvalLoop identifier preSyntaxList) postSyntaxList
-        , symbol "("
-            |> andThen
-                (\n ->
-                    mainLoop
-                        ((( Normal, "(" ) :: postSyntaxList)
-                            ++ (( FunctionEval, identifier )
-                                    :: preSyntaxList
-                               )
+pseudoElement : Parser ( Selector, String )
+pseudoElement =
+    symbol "::"
+        |> thenIgnore zeroOrMore isSelectorNameChar
+        |> source
+        |> map ((,) PseudoElement)
+
+
+pseudoClass : Parser ( Selector, String )
+pseudoClass =
+    symbol ":"
+        |> thenIgnore zeroOrMore isSelectorNameChar
+        |> source
+        |> map ((,) PseudoClass)
+
+
+isSelectorNameChar : Char -> Bool
+isSelectorNameChar c =
+    isWhitespace c
+        || isCommentChar c
+        || Set.member c selectorNameInvalidCharSet
+        |> not
+
+
+selectorNameInvalidCharSet : Set Char
+selectorNameInvalidCharSet =
+    Set.fromList [ ':', '{', '}', ',', '.', '#', '>', '+', '~', '*', '[', ']' ]
+
+
+attributeSelector : Parser (List Syntax)
+attributeSelector =
+    symbol "["
+        |> map (always ( Normal, "[" ))
+        |> andThen
+            (\opener ->
+                repeat zeroOrMore attributeSelectorLoop
+                    |> map
+                        ((::) [ opener ]
+                            >> List.reverse
+                            >> List.concat
                         )
+            )
+
+
+attributeSelectorLoop : Parser (List Syntax)
+attributeSelectorLoop =
+    oneOf
+        [ whitespaceOrComment
+        , attributeName |> map List.singleton
+        , attributeOperator
+            |> andThen
+                (\operator ->
+                    attributeValue []
+                        |> map (flip (++) [ operator ])
                 )
-        , mainLoop (postSyntaxList ++ (( Normal, identifier ) :: preSyntaxList))
         ]
 
 
-classStatementLoop : List Syntax -> Parser (List Syntax)
-classStatementLoop revSyntaxes =
+attributeName : Parser Syntax
+attributeName =
+    keep oneOrMore (\c -> not <| Set.member c attSelNameInvalidCharSet)
+        |> map ((,) (Selector (AttributeSelector AttributeName)))
+
+
+attSelNameInvalidCharSet : Set Char
+attSelNameInvalidCharSet =
+    Set.union attSelOperatorCharSet whitespaceCharSet
+        |> Set.insert ']'
+
+
+attSelOperatorCharSet : Set Char
+attSelOperatorCharSet =
+    Set.fromList [ '=', '~', '|', '^', '$', '*' ]
+
+
+attributeOperator : Parser Syntax
+attributeOperator =
     oneOf
-        [ whitespaceOrComment classStatementLoop revSyntaxes
-        , keep oneOrMore isIdentifierNameChar
-            |> map ((,) Function)
-            |> consThen mainLoop revSyntaxes
-        , mainLoop revSyntaxes
+        [ symbol "~="
+        , symbol "|="
+        , symbol "^="
+        , symbol "$="
+        , symbol "*="
+        , symbol "="
         ]
+        |> source
+        |> map ((,) (Selector (AttributeSelector AttributeOperator)))
 
 
-argLoop : List Syntax -> Parser (List Syntax)
-argLoop revSyntaxes =
+attributeValue : List Syntax -> Parser (List Syntax)
+attributeValue revSyntaxes =
     oneOf
-        [ whitespaceOrComment argLoop revSyntaxes
-        , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
-            |> andThen (\n -> argLoop (( Param, n ) :: revSyntaxes))
-        , keep oneOrMore (\c -> c == '/' || c == ',')
-            |> andThen (\n -> argLoop (( Normal, n ) :: revSyntaxes))
-        , symbol ")"
-            |> andThen (\n -> mainLoop (( Normal, ")" ) :: revSyntaxes))
-        , end revSyntaxes
+        [ whitespaceOrComment
+            |> addThen attributeValue revSyntaxes
+        , stringLiteral
+            |> addThen succeed revSyntaxes
+        , keep oneOrMore (\c -> c /= ']' && not (isWhitespace c))
+            |> map ((,) (Selector (AttributeSelector AttributeValue)))
+            |> consThen succeed revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
-isIdentifierNameChar : Char -> Bool
-isIdentifierNameChar c =
-    not
-        (isPunctuaction c
-            || isStringLiteralChar c
-            || isCommentChar c
-            || isWhitespace c
-        )
+
+-- Declaration Block
 
 
-
--- Reserved Words
-
-
-isKeyword : String -> Bool
-isKeyword str =
-    Set.member str keywordSet
-
-
-keywordSet : Set String
-keywordSet =
-    Set.fromList
-        [ "break"
-        ]
-
-
-symbolChar : Parser Syntax
-symbolChar =
-    keep oneOrMore isSymbolChar
+declarationBlock : Parser (List Syntax)
+declarationBlock =
+    keep oneOrMore ((==) '{')
         |> map ((,) Normal)
+        |> andThen declarationBlockHelper
 
 
-isSymbolChar : Char -> Bool
-isSymbolChar c =
-    Set.member c symbolSet
+declarationBlockHelper : Syntax -> Parser (List Syntax)
+declarationBlockHelper opener =
+    repeat zeroOrMore declarationLoop
+        |> map
+            ((::) [ opener ]
+                >> List.reverse
+                >> List.concat
+            )
 
 
-symbolSet : Set Char
-symbolSet =
+declarationLoop : Parser (List Syntax)
+declarationLoop =
+    oneOf
+        [ whitespaceOrComment
+        , keep oneOrMore isPropertyChar
+            |> map ((,) Property >> List.singleton)
+        , keep oneOrMore (\c -> c == ';' || c == '/')
+            |> map ((,) Normal >> List.singleton)
+        , value
+        ]
+
+
+isPropertyChar : Char -> Bool
+isPropertyChar c =
+    not (isWhitespace c || isCommentChar c || c == ':' || c == ';' || c == '}')
+
+
+value : Parser (List Syntax)
+value =
+    keep oneOrMore ((==) ':')
+        |> map ((,) Normal)
+        |> andThen valueHelper
+
+
+valueHelper : Syntax -> Parser (List Syntax)
+valueHelper opener =
+    repeat zeroOrMore valueLoop
+        |> map
+            ((::) [ opener ]
+                >> List.reverse
+                >> List.concat
+            )
+
+
+valueLoop : Parser (List Syntax)
+valueLoop =
+    oneOf
+        [ whitespaceOrComment
+        , stringLiteral
+        , number |> map List.singleton
+        , hexColor
+        , stringArg "url"
+        , stringArg "format"
+        , stringArg "local"
+        , keep oneOrMore isPropertyValueChar
+            |> map
+                (\n ->
+                    if isUnit n then
+                        [ ( Unit, n ) ]
+                    else
+                        [ ( PropertyValue, n ) ]
+                )
+        , keep oneOrMore isNotPropertyValueChar
+            |> map ((,) Normal >> List.singleton)
+        , keep oneOrMore isOperatorChar
+            |> map ((,) Unit >> List.singleton)
+        ]
+
+
+hexColor : Parser (List Syntax)
+hexColor =
+    symbol "#"
+        |> andThen
+            (\_ ->
+                keep zeroOrMore isPropertyValueChar
+                    |> map (\n -> [ ( Number, "#" ++ n ) ])
+            )
+
+
+stringArg : String -> Parser (List Syntax)
+stringArg fnStr =
+    keyword (fnStr ++ "(")
+        |> map (always [ ( Normal, "(" ), ( PropertyValue, fnStr ) ])
+        |> andThen
+            (\opener ->
+                oneOf
+                    [ stringLiteral
+                        |> map (\ns -> ns ++ opener)
+                    , keep zeroOrMore ((/=) ')')
+                        |> map (\n -> ( String, n ) :: opener)
+                    ]
+            )
+
+
+isPropertyValueChar : Char -> Bool
+isPropertyValueChar c =
+    isPropertyChar c && not (c == '(' || c == ')' || c == ',' || isOperatorChar c)
+
+
+isNotPropertyValueChar : Char -> Bool
+isNotPropertyValueChar c =
+    c == '(' || c == ')' || c == ':' || c == ',' || c == '/'
+
+
+isUnit : String -> Bool
+isUnit n =
+    Set.member n unitSet
+
+
+unitSet : Set String
+unitSet =
+    Set.fromList
+        [ "em"
+        , "ex"
+        , "ch"
+        , "rem"
+        , "vw"
+        , "vh"
+        , "vmin"
+        , "vmax"
+        , "cm"
+        , "mm"
+        , "q"
+        , "in"
+        , "pt"
+        , "pc"
+        , "px"
+        , "deg"
+        , "grad"
+        , "rad"
+        , "turn"
+        , "s"
+        , "ms"
+        , "Hz"
+        , "kHz"
+        , "dpi"
+        , "dpcm"
+        , "dppx"
+        ]
+
+
+isOperatorChar : Char -> Bool
+isOperatorChar c =
+    Set.member c operatorCharSet
+
+
+operatorCharSet : Set Char
+operatorCharSet =
     Set.fromList
         [ '+'
         , '-'
+        , '%'
         , '*'
         , '/'
-        , '='
-        , '!'
-        , '<'
-        , '>'
-        , '&'
-        , '|'
-        , '\\'
-        , '?'
-        , '^'
-        , ':'
-        , ';'
-        , '~'
-        , '%'
-        , '.'
-        , '{'
-        , '}'
-        , '('
-        , ')'
-        , '['
-        , ']'
-        , ','
-        , '@'
-        , '#'
-        , '$'
-        , '"'
-        , '\''
         ]
-
-
-isLiteralKeyword : String -> Bool
-isLiteralKeyword str =
-    Set.member str literalKeywordSet
-
-
-literalKeywordSet : Set String
-literalKeywordSet =
-    [ "true"
-    , "false"
-    , "null"
-    , "undefined"
-    , "NaN"
-    , "Infinity"
-    ]
-        |> Set.fromList
 
 
 
@@ -237,7 +426,7 @@ quoteDelimiter =
     , end = "'"
     , isNestable = False
     , defaultMap = ((,) String)
-    , innerParsers = [ lineBreakList, cssEscapable ]
+    , innerParsers = [ lineBreak, cssEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
 
@@ -257,7 +446,7 @@ isStringLiteralChar c =
 
 
 
--- Comments
+-- Comment
 
 
 comment : Parser (List Syntax)
@@ -267,7 +456,7 @@ comment =
         , end = "*/"
         , isNestable = False
         , defaultMap = ((,) Comment)
-        , innerParsers = [ lineBreakList ]
+        , innerParsers = [ lineBreak ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
 
@@ -281,27 +470,21 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
-whitespaceOrComment continueFunction revSyntaxes =
+whitespaceOrComment : Parser (List Syntax)
+whitespaceOrComment =
     oneOf
-        [ oneOf
-            [ keep oneOrMore isSpace |> map ((,) Normal)
-            , lineBreak
-            ]
-            |> consThen continueFunction revSyntaxes
-        , comment |> addThen continueFunction revSyntaxes
+        [ keep oneOrMore isSpace
+            |> map ((,) Normal >> List.singleton)
+        , lineBreak
+        , comment
         ]
 
 
-lineBreak : Parser Syntax
+lineBreak : Parser (List Syntax)
 lineBreak =
     keep (Exactly 1) isLineBreak
         |> map ((,) LineBreak)
-
-
-lineBreakList : Parser (List Syntax)
-lineBreakList =
-    repeat oneOrMore lineBreak
+        |> repeat oneOrMore
 
 
 number : Parser Syntax
@@ -319,12 +502,6 @@ cssEscapable =
         |> repeat oneOrMore
 
 
-end : List Syntax -> Parser (List Syntax)
-end revSyntaxes =
-    Parser.end
-        |> map (always revSyntaxes)
-
-
 toFragment : Syntax -> Fragment
 toFragment ( syntaxType, text ) =
     case syntaxType of
@@ -337,6 +514,28 @@ toFragment ( syntaxType, text ) =
         String ->
             normal Color2 text
 
+        Selector selector ->
+            selectorToFragment selector text
+
+        Property ->
+            emphasis Color4 text
+
+        PropertyValue ->
+            normal Color4 text
+
+        Number ->
+            normal Color6 text
+
+        Unit ->
+            normal Color3 text
+
+        LineBreak ->
+            normal Default text
+
+
+selectorToFragment : Selector -> String -> Fragment
+selectorToFragment selector text =
+    case selector of
         Element ->
             normal Color3 text
 
@@ -346,17 +545,30 @@ toFragment ( syntaxType, text ) =
         Class ->
             normal Color5 text
 
-        Attribute ->
-            emphasis Color7 text
+        Combinator ->
+            normal Color7 text
 
-        AttributeValue ->
-            normal Color4 text
-
-        Number ->
-            normal Color6 text
-
-        Grandeza ->
+        Universal ->
             normal Color3 text
 
-        LineBreak ->
+        AttributeSelector att ->
+            attributeSelectorToFragment att text
+
+        PseudoElement ->
             normal Default text
+
+        PseudoClass ->
+            normal Default text
+
+
+attributeSelectorToFragment : AttributeSelector -> String -> Fragment
+attributeSelectorToFragment att text =
+    case att of
+        AttributeName ->
+            normal Color5 text
+
+        AttributeValue ->
+            normal Color2 text
+
+        AttributeOperator ->
+            normal Color3 text
