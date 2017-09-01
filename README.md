@@ -2,27 +2,6 @@
 
 Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
-## Running demo
-
-To run demo locally you have to have [elm-live](https://github.com/tomekwi/elm-live) installed.
-
-### Linux
-
-```shell
-cd demo
-make start
-```
-
-### Windows
-
-```shell
-cd demo
-elm-live Main.elm --output=elm.js --pushstate --open --debug --dir=./
-```
-
-Demo will be available at http://localhost:8000
-
-
 ## Themes
 
 You can define the theme either by copying and pasting the theme styles into your `.css` file or using the `useTheme` helper.
@@ -48,3 +27,13 @@ view model =
                 (pre [] [ code [] [ text model.elmCode ]])
         ]
 ```
+
+
+## Running demo
+
+```shell
+cd demo
+elm-reactor
+```
+
+Demo will be available at http://localhost:8000

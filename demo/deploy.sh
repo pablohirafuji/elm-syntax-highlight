@@ -42,6 +42,8 @@ cd ..
 cp demo/index.html $TEMP_FOLDER/index.html
 cd $TEMP_FOLDER
 uglifyjs elm.js --output elm.js
+sed -i -e 's/\/_compile\/Main.elm/elm.js/g' index.html
+
 
 
 
