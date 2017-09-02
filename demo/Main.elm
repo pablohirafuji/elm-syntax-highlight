@@ -3,6 +3,7 @@ module Main exposing (..)
 import Time exposing (Time)
 import Html exposing (Html, div, text, p, textarea, pre, code, option, select, label, ul, li, input, button)
 import Html.Attributes exposing (defaultValue, id, class, value, spellcheck, selected, style, type_, placeholder, checked, classList)
+import Dict exposing (Dict)
 import Html.Lazy
 import Html.Events exposing (onClick, onInput, onCheck)
 import Json.Decode as Json
@@ -28,15 +29,13 @@ main =
 
 type alias Model =
     { scroll : Scroll
-    , language : Language
-    , elm : LanguageModel
-    , javascript : LanguageModel
-    , xml : LanguageModel
+    , currentLanguage : String
+    , languagesModel : Dict String LanguageModel
     , showLineCount : Bool
     , lineCountStart : Int
     , lineCount : Maybe Int
-    , colorScheme : String
-    , customColorScheme : String
+    , theme : String
+    , customTheme : String
     , highlight : HighlightModel
     }
 
@@ -44,15 +43,13 @@ type alias Model =
 initModel : Model
 initModel =
     { scroll = Scroll 0 0
-    , language = Elm
-    , elm = initLanguageModel elmExample
-    , javascript = initLanguageModel javascriptExample
-    , xml = initLanguageModel xmlExample
+    , currentLanguage = "Elm"
+    , languagesModel = initLanguagesModel
     , showLineCount = True
     , lineCountStart = 1
     , lineCount = Just 1
-    , colorScheme = "monokai"
-    , customColorScheme = Theme.monokai
+    , theme = "Monokai"
+    , customTheme = Theme.monokai
     , highlight = HighlightModel (Just Add) 1 3
     }
 
@@ -63,17 +60,21 @@ type alias Scroll =
     }
 
 
-type Language
-    = Elm
-    | Javascript
-    | Xml
-
-
 type alias LanguageModel =
     { code : String
     , scroll : Scroll
     , highlight : HighlightModel
     }
+
+
+initLanguagesModel : Dict String LanguageModel
+initLanguagesModel =
+    Dict.fromList
+        [ ( "Elm", initLanguageModel elmExample )
+        , ( "Xml", initLanguageModel xmlExample )
+        , ( "Javascript", initLanguageModel javascriptExample )
+        , ( "Css", initLanguageModel cssExample )
+        ]
 
 
 initLanguageModel : String -> LanguageModel
@@ -153,16 +154,38 @@ xmlExample =
 """
 
 
+cssExample : String
+cssExample =
+    """stock::before {
+  display: block;
+  content: "To scale, the lengths of materials in stock are:";
+}
+stock > * {
+  display: block;
+  width: attr(length em); /* default 0 */
+  height: 1em;
+  border: solid thin;
+  margin: 0.5em;
+}
+.wood {
+  background: orange url(wood.png);
+}
+.metal {
+  background: #c0c0c0 url(metal.png);
+}
+"""
+
+
 
 -- Update
 
 
 type Msg
     = NoOp
-    | SetText Language String
+    | SetText String String
     | OnScroll Scroll
     | Frame Time
-    | SetLanguage Language
+    | SetLanguage String
     | ShowLineCount Bool
     | SetLineCountStart Int
     | SetColorScheme String
@@ -174,7 +197,7 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ elm, xml, javascript, highlight } as model) =
+update msg ({ highlight } as model) =
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -191,9 +214,9 @@ update msg ({ elm, xml, javascript, highlight } as model) =
             )
 
         Frame _ ->
-            getLangModel model.language model
+            getLangModel model.currentLanguage model
                 |> (\m -> { m | scroll = model.scroll })
-                |> updateLangModel model.language model
+                |> updateLangModel model.currentLanguage model
                 |> flip (,) Cmd.none
 
         SetLanguage lang ->
@@ -203,7 +226,7 @@ update msg ({ elm, xml, javascript, highlight } as model) =
                 |> (\m ->
                         { m
                             | scroll = Scroll 0 0
-                            , language = lang
+                            , currentLanguage = lang
                         }
                    )
                 |> flip (,) Cmd.none
@@ -229,12 +252,12 @@ update msg ({ elm, xml, javascript, highlight } as model) =
             )
 
         SetColorScheme cs ->
-            ( { model | colorScheme = cs }
+            ( { model | theme = cs }
             , Cmd.none
             )
 
         SetCustomColorScheme ccs ->
-            ( { model | customColorScheme = ccs }
+            ( { model | customTheme = ccs }
             , Cmd.none
             )
 
@@ -254,36 +277,22 @@ update msg ({ elm, xml, javascript, highlight } as model) =
             )
 
         ApplyHighlight ->
-            getLangModel model.language model
+            getLangModel model.currentLanguage model
                 |> (\m -> { m | highlight = model.highlight })
-                |> updateLangModel model.language model
+                |> updateLangModel model.currentLanguage model
                 |> flip (,) Cmd.none
 
 
-getLangModel : Language -> Model -> LanguageModel
+getLangModel : String -> Model -> LanguageModel
 getLangModel lang model =
-    case lang of
-        Elm ->
-            model.elm
-
-        Xml ->
-            model.xml
-
-        Javascript ->
-            model.javascript
+    Dict.get lang model.languagesModel
+        |> Maybe.withDefault (initLanguageModel elmExample)
 
 
-updateLangModel : Language -> Model -> LanguageModel -> Model
+updateLangModel : String -> Model -> LanguageModel -> Model
 updateLangModel lang model langModel =
-    case lang of
-        Elm ->
-            { model | elm = langModel }
-
-        Xml ->
-            { model | xml = langModel }
-
-        Javascript ->
-            { model | javascript = langModel }
+    Dict.insert lang langModel model.languagesModel
+        |> \n -> { model | languagesModel = n }
 
 
 
@@ -291,19 +300,20 @@ updateLangModel lang model langModel =
 
 
 view : Model -> Html Msg
-view ({ language } as model) =
+view model =
     div []
         [ Html.node "style" [] [ text (textareaStyle model) ]
-        , syntaxTheme model
-        , viewLanguage Elm model
-        , viewLanguage Javascript model
-        , viewLanguage Xml model
+        , Html.Lazy.lazy2 syntaxTheme model.theme model.customTheme
+        , viewLanguage "Elm" toHtmlElm model
+        , viewLanguage "Javascript" toHtmlJavascript model
+        , viewLanguage "Xml" toHtmlXml model
+        , viewLanguage "Css" toHtmlCss model
         , viewOptions model
         ]
 
 
 textareaStyle : Model -> String
-textareaStyle { colorScheme } =
+textareaStyle { theme } =
     let
         style a b =
             String.join "\n"
@@ -311,36 +321,30 @@ textareaStyle { colorScheme } =
                 , ".textarea::selection { background-color: " ++ b ++ "; }"
                 ]
     in
-        if List.member colorScheme [ "monokai", "oneDark" ] then
+        if List.member theme [ "Monokai", "One Dark", "Custom" ] then
             style "#f8f8f2" "rgba(255,255,255,0.2)"
         else
             style "#24292e" "rgba(0,0,0,0.2)"
 
 
-syntaxTheme : Model -> Html msg
-syntaxTheme { colorScheme, customColorScheme } =
-    case colorScheme of
-        "monokai" ->
-            SH.useTheme SH.monokai
-
-        "github" ->
-            SH.useTheme SH.github
-
-        "oneDark" ->
-            SH.useTheme SH.oneDark
-
-        _ ->
-            Html.node "style" [] [ text customColorScheme ]
+syntaxTheme : String -> String -> Html msg
+syntaxTheme currentTheme customTheme =
+    Dict.fromList Theme.all
+        |> Dict.get currentTheme
+        |> Maybe.withDefault customTheme
+        |> text
+        |> List.singleton
+        |> Html.node "style" []
 
 
-viewLanguage : Language -> Model -> Html Msg
-viewLanguage thisLang ({ language, lineCount } as model) =
-    if thisLang /= language then
+viewLanguage : String -> (Maybe Int -> String -> HighlightModel -> Html Msg) -> Model -> Html Msg
+viewLanguage thisLang parser ({ currentLanguage, lineCount } as model) =
+    if thisLang /= currentLanguage then
         div [] []
     else
         let
-            ( langModel, parser ) =
-                getLangModelParser thisLang model
+            langModel =
+                getLangModel thisLang model
         in
             div
                 [ classList
@@ -370,7 +374,7 @@ viewLanguage thisLang ({ language, lineCount } as model) =
                 ]
 
 
-viewTextarea : Language -> String -> Model -> Html Msg
+viewTextarea : String -> String -> Model -> Html Msg
 viewTextarea thisLang codeStr { showLineCount } =
     textarea
         [ defaultValue codeStr
@@ -390,19 +394,6 @@ viewTextarea thisLang codeStr { showLineCount } =
         []
 
 
-getLangModelParser : Language -> Model -> ( LanguageModel, Maybe Int -> String -> HighlightModel -> Html Msg )
-getLangModelParser lang model =
-    case lang of
-        Elm ->
-            ( model.elm, toHtmlElm )
-
-        Xml ->
-            ( model.xml, toHtmlXml )
-
-        Javascript ->
-            ( model.javascript, toHtmlJavascript )
-
-
 
 -- Helpers function for Html.Lazy.lazy
 
@@ -420,6 +411,11 @@ toHtmlXml =
 toHtmlJavascript : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlJavascript =
     toHtml SH.javascript
+
+
+toHtmlCss : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlCss =
+    toHtml SH.css
 
 
 toHtml : (String -> Result x (List Line)) -> Maybe Int -> String -> HighlightModel -> Html Msg
@@ -442,18 +438,18 @@ toHtml parser maybeStart str hlModel =
 -- Options
 
 
-viewColorOptions : Model -> List ( String, String ) -> List (Html Msg)
-viewColorOptions { colorScheme } =
+viewSelectOptions : String -> List String -> List (Html Msg)
+viewSelectOptions current =
     List.map
-        (\( scheme, name ) ->
+        (\name_ ->
             option
-                [ selected (colorScheme == scheme), value scheme ]
-                [ text name ]
+                [ selected (current == name_), value name_ ]
+                [ text name_ ]
         )
 
 
 viewOptions : Model -> Html Msg
-viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) =
+viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model) =
     ul []
         [ li []
             [ label []
@@ -475,14 +471,13 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
                 [ text "Language: "
                 , select
                     [ Json.at [ "target", "value" ] Json.string
-                        |> Json.map toLanguageType
                         |> Json.map SetLanguage
                         |> Html.Events.on "change"
                     ]
-                    [ option [ selected (language == Elm) ] [ text "Elm" ]
-                    , option [ selected (language == Xml) ] [ text "Xml" ]
-                    , option [ selected (language == Javascript) ] [ text "Javascript" ]
-                    ]
+                  <|
+                    viewSelectOptions
+                        model.currentLanguage
+                        (Dict.keys model.languagesModel)
                 ]
             ]
         , li []
@@ -493,17 +488,15 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
                         (Json.map SetColorScheme (Json.at [ "target", "value" ] Json.string))
                     ]
                   <|
-                    viewColorOptions
-                        model
-                        [ ( "monokai", "Monokai" )
-                        , ( "github", "GitHub" )
-                        , ( "oneDark", "One Dark" )
-                        , ( "custom", "Custom" )
-                        ]
+                    viewSelectOptions
+                        model.theme
+                        ((List.map Tuple.first Theme.all)
+                            ++ [ "Custom" ]
+                        )
                 ]
             ]
-        , if colorScheme == "custom" then
-            customColorScheme model
+        , if theme == "Custom" then
+            customTheme model
           else
             text ""
         , li []
@@ -513,23 +506,10 @@ viewOptions ({ language, showLineCount, lineCountStart, colorScheme } as model) 
         ]
 
 
-toLanguageType : String -> Language
-toLanguageType str =
-    case str of
-        "Elm" ->
-            Elm
-
-        "Xml" ->
-            Xml
-
-        _ ->
-            Javascript
-
-
-customColorScheme : Model -> Html Msg
-customColorScheme model =
+customTheme : Model -> Html Msg
+customTheme model =
     textarea
-        [ defaultValue model.customColorScheme
+        [ defaultValue model.customTheme
         , onInput SetCustomColorScheme
         , spellcheck False
         , style [ ( "width", "100%" ) ]
