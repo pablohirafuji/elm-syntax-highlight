@@ -3,14 +3,16 @@ module SyntaxHighlight.Language.Css
         ( parse
           -- Exposing just for tests purpose
         , toSyntax
-          -- Exposing just for tests purpose
         , SyntaxType(..)
+        , AtRule(..)
+        , Selector(..)
+        , AttributeSelector(..)
         )
 
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
 import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
-import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis)
+import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
 import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, whitespaceCharSet, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen, escapable, isEscapable)
 
 
@@ -22,12 +24,20 @@ type SyntaxType
     = Normal
     | Comment
     | String
+    | AtRule AtRule
     | Selector Selector
     | Property
     | PropertyValue
     | Number
     | Unit
     | LineBreak
+
+
+type AtRule
+    = Identifier
+    | Prefix
+    | Keyword
+    | AtRuleValue
 
 
 type Selector
@@ -65,10 +75,182 @@ mainLoop : Parser (List Syntax)
 mainLoop =
     oneOf
         [ whitespaceOrComment
+        , atRule
         , selector
         , declarationBlock
-        , keep oneOrMore (\c -> c == ',' || c == '}' || c == '/' || c == ']')
+        , keep (Exactly 1) (always True)
             |> map ((,) Normal >> List.singleton)
+        ]
+
+
+
+-- At-Rules
+
+
+atRule : Parser (List Syntax)
+atRule =
+    symbol "@"
+        |> thenIgnore zeroOrMore isSelectorNameChar
+        |> source
+        |> andThen atRuleHelper
+
+
+atRuleHelper : String -> Parser (List Syntax)
+atRuleHelper atRule =
+    case atRule of
+        "@import" ->
+            oneOf
+                [ whitespaceOrComment
+                , stringArg "url"
+                , stringLiteral
+                , atRuleKeywordOrValue
+                , keep (Exactly 1) (\c -> c /= ';')
+                    |> map ((,) Normal >> List.singleton)
+                ]
+                |> repeat zeroOrMore
+                |> map (finishAtRules atRule)
+
+        "@namespace" ->
+            oneOf
+                [ whitespaceOrComment
+                , stringArg "url"
+                , stringLiteral
+                , keep oneOrMore isSelectorNameChar
+                    |> map ((,) (AtRule Prefix) >> List.singleton)
+                , keep (Exactly 1) (\c -> c /= ';')
+                    |> map ((,) Normal >> List.singleton)
+                ]
+                |> repeat zeroOrMore
+                |> map (finishAtRules atRule)
+
+        "@charset" ->
+            oneOf
+                [ whitespaceOrComment
+                , stringLiteral
+                , keep oneOrMore isSelectorNameChar
+                    |> map ((,) String >> List.singleton)
+                , keep (Exactly 1) (\c -> c /= ';')
+                    |> map ((,) Normal >> List.singleton)
+                ]
+                |> repeat zeroOrMore
+                |> map (finishAtRules atRule)
+
+        "@media" ->
+            mediaOrSupports atRule
+
+        "@supports" ->
+            mediaOrSupports atRule
+
+        "@keyframes" ->
+            keyframesOrCounterStyle atRule
+                |> andThen nestableAtRuleOpener
+
+        "@counter-style" ->
+            keyframesOrCounterStyle atRule
+
+        "@font-feature-values" ->
+            oneOf
+                [ whitespaceOrComment
+                , keep oneOrMore isSelectorNameChar
+                    |> map ((,) (AtRule Prefix) >> List.singleton)
+                , keep (Exactly 1) (\c -> c /= '{')
+                    |> map ((,) Normal >> List.singleton)
+                ]
+                |> repeat zeroOrMore
+                |> map (finishAtRules atRule)
+                |> andThen nestableAtRuleOpener
+
+        _ ->
+            if Set.member atRule atRuleSet then
+                succeed [ ( AtRule Identifier, atRule ) ]
+            else
+                succeed [ ( Normal, atRule ) ]
+
+
+atRuleKeywordOrValue : Parser (List Syntax)
+atRuleKeywordOrValue =
+    keep oneOrMore isSelectorNameChar
+        |> map
+            (\n ->
+                if isAtRuleKeyword n then
+                    [ ( AtRule Keyword, n ) ]
+                else
+                    [ ( AtRule AtRuleValue, n ) ]
+            )
+
+
+mediaOrSupports : String -> Parser (List Syntax)
+mediaOrSupports atRule =
+    oneOf
+        [ whitespaceOrComment
+        , stringLiteral
+        , atRuleKeywordOrValue
+        , keep (Exactly 1) (\c -> c /= '{')
+            |> map ((,) Normal >> List.singleton)
+        ]
+        |> repeat zeroOrMore
+        |> map (finishAtRules atRule)
+        |> andThen nestableAtRuleOpener
+
+
+keyframesOrCounterStyle : String -> Parser (List Syntax)
+keyframesOrCounterStyle atRule =
+    oneOf
+        [ whitespaceOrComment
+        , keep oneOrMore isSelectorNameChar
+            |> map ((,) (AtRule Prefix) >> List.singleton)
+        , keep (Exactly 1) (\c -> c /= '{')
+            |> map ((,) Normal >> List.singleton)
+        ]
+        |> repeat zeroOrMore
+        |> map (finishAtRules atRule)
+
+
+finishAtRules : String -> List (List Syntax) -> List Syntax
+finishAtRules atRule ns =
+    [ ( AtRule Identifier, atRule ) ]
+        :: ns
+        |> List.reverse
+        |> List.concat
+
+
+nestableAtRuleOpener : List Syntax -> Parser (List Syntax)
+nestableAtRuleOpener ns =
+    oneOf
+        [ symbol "{"
+            |> map (always (( Normal, "{" ) :: ns))
+        , succeed ns
+        ]
+
+
+isAtRuleKeyword : String -> Bool
+isAtRuleKeyword n =
+    Set.member n atRuleKeywordSet
+
+
+atRuleKeywordSet : Set String
+atRuleKeywordSet =
+    Set.fromList
+        [ "and"
+        , "or"
+        , "not"
+        , "only"
+        ]
+
+
+atRuleSet : Set String
+atRuleSet =
+    Set.fromList
+        [ "@page"
+        , "@font-face"
+
+        -- Font-feature-values at-rules
+        , "@swash"
+        , "@annotation"
+        , "@ornaments"
+        , "@stylistic"
+        , "@styleset"
+        , "@character-variant"
         ]
 
 
@@ -158,7 +340,7 @@ isSelectorNameChar c =
 
 selectorNameInvalidCharSet : Set Char
 selectorNameInvalidCharSet =
-    Set.fromList [ ':', '{', '}', ',', '.', '#', '>', '+', '~', '*', '[', ']' ]
+    Set.fromList [ ':', '{', '}', ',', '.', '#', '>', '+', '~', '*', '[', ']', '|', ';', '(', ')' ]
 
 
 attributeSelector : Parser (List Syntax)
@@ -317,6 +499,9 @@ valueLoop =
 
 hexColor : Parser (List Syntax)
 hexColor =
+    --SyntaxHighlight.Helpers.hexColor
+    --    |> source
+    --    |> map ((,) Number >> List.singleton)
     symbol "#"
         |> andThen
             (\_ ->
@@ -514,6 +699,9 @@ toFragment ( syntaxType, text ) =
         String ->
             normal Color2 text
 
+        AtRule atRule ->
+            atRuleToFragment atRule text
+
         Selector selector ->
             selectorToFragment selector text
 
@@ -531,6 +719,22 @@ toFragment ( syntaxType, text ) =
 
         LineBreak ->
             normal Default text
+
+
+atRuleToFragment : AtRule -> String -> Fragment
+atRuleToFragment atRule text =
+    case atRule of
+        Identifier ->
+            strong Color3 text
+
+        Prefix ->
+            normal Color5 text
+
+        Keyword ->
+            normal Color3 text
+
+        AtRuleValue ->
+            normal Color4 text
 
 
 selectorToFragment : Selector -> String -> Fragment
