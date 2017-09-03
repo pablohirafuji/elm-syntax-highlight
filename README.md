@@ -36,4 +36,4 @@ cd demo
 elm-reactor
 ```
 
-Demo will be available at http://localhost:8000
+Demo will be available at http://localhost:8000/index.html
