@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "summary": "Syntax highlighting in Elm",
     "repository": "https://github.com/pablohirafuji/elm-syntax-highlight.git",
     "license": "BSD3",
