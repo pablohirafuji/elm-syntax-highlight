@@ -35,26 +35,25 @@ parse =
 
 toSyntax : String -> Result Error (List Syntax)
 toSyntax =
-    mainLoop []
+    mainLoop
         |> repeat zeroOrMore
         |> map (List.reverse >> List.concat)
         |> Parser.run
 
 
-mainLoop : List Syntax -> Parser (List Syntax)
-mainLoop revSyntaxes =
+mainLoop : Parser (List Syntax)
+mainLoop =
     oneOf
-        [ whitespace |> consThen succeed revSyntaxes
-        , comment |> addThen succeed revSyntaxes
+        [ whitespace |> map List.singleton
+        , comment
         , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
-            |> map ((,) Normal)
-            |> consThen succeed revSyntaxes
-        , openTag revSyntaxes
+            |> map ((,) Normal >> List.singleton)
+        , openTag
         ]
 
 
-openTag : List Syntax -> Parser (List Syntax)
-openTag revSyntaxes =
+openTag : Parser (List Syntax)
+openTag =
     (ignore oneOrMore ((==) '<')
         |. oneOf
             [ ignore (Exactly 1) (\c -> c == '/' || c == '!')
@@ -62,8 +61,8 @@ openTag revSyntaxes =
             ]
     )
         |> source
-        |> map ((,) Normal)
-        |> consThen tag revSyntaxes
+        |> map ((,) Normal >> List.singleton)
+        |> andThen tag
 
 
 tag : List Syntax -> Parser (List Syntax)
@@ -73,25 +72,17 @@ tag revSyntaxes =
             |> thenIgnore zeroOrMore isTagChar
             |> source
             |> map ((,) Tag)
-            |> consThen attributeLoop revSyntaxes
-        , chompUntilEndTag revSyntaxes
+            |> andThen
+                (\n ->
+                    repeat zeroOrMore attributeLoop
+                        |> map
+                            ((::) (n :: revSyntaxes)
+                                >> List.reverse
+                                >> List.concat
+                            )
+                )
+        , succeed revSyntaxes
         ]
-
-
-endTag : List Syntax -> Parser (List Syntax)
-endTag revSyntaxes =
-    keep oneOrMore ((==) '>')
-        |> map ((,) Normal)
-        |> consThen succeed revSyntaxes
-
-
-chompUntilEndTag : List Syntax -> Parser (List Syntax)
-chompUntilEndTag revSyntaxes =
-    ignore zeroOrMore (\c -> c /= '>' && not (isLineBreak c))
-        |> thenIgnore zeroOrMore ((==) '>')
-        |> source
-        |> map ((,) Normal)
-        |> consThen succeed revSyntaxes
 
 
 isStartTagChar : Char -> Bool
@@ -104,18 +95,15 @@ isTagChar c =
     isStartTagChar c || c == '-'
 
 
-attributeLoop : List Syntax -> Parser (List Syntax)
-attributeLoop revSyntaxes =
+attributeLoop : Parser (List Syntax)
+attributeLoop =
     oneOf
         [ keep oneOrMore isAttributeChar
             |> map ((,) Attribute)
-            |> consThen attributeConfirm revSyntaxes
-        , whitespace |> consThen attributeLoop revSyntaxes
-        , endTag revSyntaxes
+            |> consThen attributeConfirm []
+        , whitespace |> map List.singleton
         , keep oneOrMore (\c -> not (isWhitespace c) && c /= '>')
-            |> map ((,) Normal)
-            |> consThen attributeLoop revSyntaxes
-        , succeed revSyntaxes
+            |> map ((,) Normal >> List.singleton)
         ]
 
 
@@ -132,17 +120,17 @@ attributeConfirm revSyntaxes =
         , keep (Exactly 1) ((==) '=')
             |> map ((,) Normal)
             |> consThen attributeValueLoop revSyntaxes
-        , endTag revSyntaxes
-        , attributeLoop revSyntaxes
+        , succeed revSyntaxes
         ]
 
 
 attributeValueLoop : List Syntax -> Parser (List Syntax)
 attributeValueLoop revSyntaxes =
     oneOf
-        [ whitespace |> consThen attributeValueLoop revSyntaxes
-        , attributeValue |> addThen attributeLoop revSyntaxes
-        , endTag revSyntaxes
+        [ whitespace
+            |> consThen attributeValueLoop revSyntaxes
+        , attributeValue
+            |> addThen succeed revSyntaxes
         , succeed revSyntaxes
         ]
 
