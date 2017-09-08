@@ -27,6 +27,7 @@ type SyntaxType
     | Function
     | LiteralKeyword
     | Param
+    | ClassExtends
     | LineBreak
 
 
@@ -67,7 +68,9 @@ keywordParser n =
             |> repeat zeroOrMore
             |> consThenRevConcat [ ( DeclarationKeyword, n ) ]
     else if n == "class" then
-        classStatementLoop [ ( DeclarationKeyword, n ) ]
+        classDeclarationLoop
+            |> repeat zeroOrMore
+            |> consThenRevConcat [ ( DeclarationKeyword, n ) ]
     else if n == "this" || n == "super" then
         succeed [ ( Param, n ) ]
     else if n == "constructor" then
@@ -81,7 +84,7 @@ keywordParser n =
     else if isLiteralKeyword n then
         succeed [ ( LiteralKeyword, n ) ]
     else
-        functionEvalLoop n [] []
+        functionEvalLoop n []
 
 
 functionDeclarationLoop : Parser (List Syntax)
@@ -90,6 +93,8 @@ functionDeclarationLoop =
         [ whitespaceOrComment
         , keep oneOrMore isIdentifierNameChar
             |> map ((,) Function >> List.singleton)
+        , symbol "*"
+            |> map (\_ -> [ ( Keyword, "*" ) ])
         , symbol "("
             |> andThen
                 (\_ ->
@@ -111,34 +116,46 @@ argLoop =
         ]
 
 
-functionEvalLoop : String -> List Syntax -> List Syntax -> Parser (List Syntax)
-functionEvalLoop identifier preSyntaxList postSyntaxList =
+functionEvalLoop : String -> List Syntax -> Parser (List Syntax)
+functionEvalLoop identifier revSyntaxes =
     oneOf
         [ whitespaceOrComment
-            |> addThen (functionEvalLoop identifier preSyntaxList) postSyntaxList
+            |> addThen (functionEvalLoop identifier) revSyntaxes
         , symbol "("
             |> andThen
                 (\n ->
                     succeed
-                        ((( Normal, "(" ) :: postSyntaxList)
-                            ++ (( FunctionEval, identifier )
-                                    :: preSyntaxList
-                               )
+                        ((( Normal, "(" ) :: revSyntaxes)
+                            ++ [ ( FunctionEval, identifier ) ]
                         )
                 )
-        , succeed (postSyntaxList ++ (( Normal, identifier ) :: preSyntaxList))
+        , succeed (revSyntaxes ++ [ ( Normal, identifier ) ])
         ]
 
 
-classStatementLoop : List Syntax -> Parser (List Syntax)
-classStatementLoop revSyntaxes =
+classDeclarationLoop : Parser (List Syntax)
+classDeclarationLoop =
     oneOf
         [ whitespaceOrComment
-            |> addThen classStatementLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
-            |> map ((,) Function)
-            |> consThen succeed revSyntaxes
-        , succeed revSyntaxes
+            |> andThen
+                (\n ->
+                    if n == "extends" then
+                        classExtendsLoop
+                            |> repeat zeroOrMore
+                            |> consThenRevConcat [ ( Keyword, n ) ]
+                    else
+                        succeed [ ( Function, n ) ]
+                )
+        ]
+
+
+classExtendsLoop : Parser (List Syntax)
+classExtendsLoop =
+    oneOf
+        [ whitespaceOrComment
+        , keep oneOrMore isIdentifierNameChar
+            |> map ((,) ClassExtends >> List.singleton)
         ]
 
 
@@ -462,6 +479,9 @@ toFragment ( syntaxType, text ) =
 
         Param ->
             normal Color7 text
+
+        ClassExtends ->
+            emphasis Color5 text
 
         LineBreak ->
             normal Default text
