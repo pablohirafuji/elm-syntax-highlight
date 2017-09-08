@@ -1,9 +1,8 @@
 module SyntaxHighlight.Language.Javascript
     exposing
         ( parse
-          -- Exposing just for tests purpose
+          -- Exposing just for tests purpose:
         , toSyntax
-          -- Exposing just for tests purpose
         , SyntaxType(..)
         )
 
@@ -39,65 +38,84 @@ parse =
 
 toSyntax : String -> Result Error (List Syntax)
 toSyntax =
-    mainLoop []
+    mainLoop
         |> repeat zeroOrMore
         |> map (List.reverse >> List.concat)
         |> Parser.run
 
 
-mainLoop : List Syntax -> Parser (List Syntax)
-mainLoop revSyntaxes =
+mainLoop : Parser (List Syntax)
+mainLoop =
     oneOf
-        [ whitespaceOrComment succeed revSyntaxes
+        [ whitespaceOrComment
         , stringLiteral
-            |> addThen succeed revSyntaxes
         , oneOf
             [ operatorChar
             , groupChar
             , number
             ]
-            |> consThen succeed revSyntaxes
+            |> map List.singleton
         , keep oneOrMore isIdentifierNameChar
-            |> andThen (keywordParser revSyntaxes)
+            |> andThen keywordParser
         ]
 
 
-keywordParser : List Syntax -> String -> Parser (List Syntax)
-keywordParser revSyntaxes n =
+keywordParser : String -> Parser (List Syntax)
+keywordParser n =
     if n == "function" || n == "static" then
-        functionStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+        functionDeclarationLoop
+            |> repeat zeroOrMore
+            |> consThenRevConcat [ ( DeclarationKeyword, n ) ]
     else if n == "class" then
-        classStatementLoop (( DeclarationKeyword, n ) :: revSyntaxes)
+        classStatementLoop [ ( DeclarationKeyword, n ) ]
     else if n == "this" || n == "super" then
-        succeed (( Param, n ) :: revSyntaxes)
+        succeed [ ( Param, n ) ]
     else if n == "constructor" then
-        functionStatementLoop (( Function, n ) :: revSyntaxes)
+        functionDeclarationLoop
+            |> repeat zeroOrMore
+            |> consThenRevConcat [ ( Function, n ) ]
     else if isKeyword n then
-        succeed (( Keyword, n ) :: revSyntaxes)
+        succeed [ ( Keyword, n ) ]
     else if isDeclarationKeyword n then
-        succeed (( DeclarationKeyword, n ) :: revSyntaxes)
+        succeed [ ( DeclarationKeyword, n ) ]
     else if isLiteralKeyword n then
-        succeed (( LiteralKeyword, n ) :: revSyntaxes)
+        succeed [ ( LiteralKeyword, n ) ]
     else
-        functionEvalLoop n revSyntaxes []
+        functionEvalLoop n [] []
 
 
-functionStatementLoop : List Syntax -> Parser (List Syntax)
-functionStatementLoop revSyntaxes =
+functionDeclarationLoop : Parser (List Syntax)
+functionDeclarationLoop =
     oneOf
-        [ whitespaceOrComment functionStatementLoop revSyntaxes
+        [ whitespaceOrComment
         , keep oneOrMore isIdentifierNameChar
-            |> andThen (\n -> functionStatementLoop (( Function, n ) :: revSyntaxes))
+            |> map ((,) Function >> List.singleton)
         , symbol "("
-            |> andThen (\n -> argLoop (( Normal, "(" ) :: revSyntaxes))
-        , succeed revSyntaxes
+            |> andThen
+                (\_ ->
+                    argLoop
+                        |> repeat zeroOrMore
+                        |> consThenRevConcat [ ( Normal, "(" ) ]
+                )
+        ]
+
+
+argLoop : Parser (List Syntax)
+argLoop =
+    oneOf
+        [ whitespaceOrComment
+        , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
+            |> map ((,) Param >> List.singleton)
+        , keep oneOrMore (\c -> c == '/' || c == ',')
+            |> map ((,) Normal >> List.singleton)
         ]
 
 
 functionEvalLoop : String -> List Syntax -> List Syntax -> Parser (List Syntax)
 functionEvalLoop identifier preSyntaxList postSyntaxList =
     oneOf
-        [ whitespaceOrComment (functionEvalLoop identifier preSyntaxList) postSyntaxList
+        [ whitespaceOrComment
+            |> addThen (functionEvalLoop identifier preSyntaxList) postSyntaxList
         , symbol "("
             |> andThen
                 (\n ->
@@ -115,24 +133,11 @@ functionEvalLoop identifier preSyntaxList postSyntaxList =
 classStatementLoop : List Syntax -> Parser (List Syntax)
 classStatementLoop revSyntaxes =
     oneOf
-        [ whitespaceOrComment classStatementLoop revSyntaxes
+        [ whitespaceOrComment
+            |> addThen classStatementLoop revSyntaxes
         , keep oneOrMore isIdentifierNameChar
             |> map ((,) Function)
             |> consThen succeed revSyntaxes
-        , succeed revSyntaxes
-        ]
-
-
-argLoop : List Syntax -> Parser (List Syntax)
-argLoop revSyntaxes =
-    oneOf
-        [ whitespaceOrComment argLoop revSyntaxes
-        , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
-            |> andThen (\n -> argLoop (( Param, n ) :: revSyntaxes))
-        , keep oneOrMore (\c -> c == '/' || c == ',')
-            |> andThen (\n -> argLoop (( Normal, n ) :: revSyntaxes))
-        , symbol ")"
-            |> andThen (\_ -> succeed (( Normal, ")" ) :: revSyntaxes))
         , succeed revSyntaxes
         ]
 
@@ -286,14 +291,14 @@ isLiteralKeyword str =
 
 literalKeywordSet : Set String
 literalKeywordSet =
-    [ "true"
-    , "false"
-    , "null"
-    , "undefined"
-    , "NaN"
-    , "Infinity"
-    ]
-        |> Set.fromList
+    Set.fromList
+        [ "true"
+        , "false"
+        , "null"
+        , "undefined"
+        , "NaN"
+        , "Infinity"
+        ]
 
 
 
@@ -391,27 +396,21 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
-whitespaceOrComment continueFunction revSyntaxes =
+whitespaceOrComment : Parser (List Syntax)
+whitespaceOrComment =
     oneOf
-        [ oneOf
-            [ keep oneOrMore isSpace |> map ((,) Normal)
-            , lineBreak
-            ]
-            |> consThen continueFunction revSyntaxes
-        , comment |> addThen continueFunction revSyntaxes
+        [ keep oneOrMore isSpace
+            |> map ((,) Normal >> List.singleton)
+        , lineBreakList
+        , comment
         ]
-
-
-lineBreak : Parser Syntax
-lineBreak =
-    keep (Exactly 1) isLineBreak
-        |> map ((,) LineBreak)
 
 
 lineBreakList : Parser (List Syntax)
 lineBreakList =
-    repeat oneOrMore lineBreak
+    keep (Exactly 1) isLineBreak
+        |> map ((,) LineBreak)
+        |> repeat oneOrMore
 
 
 number : Parser Syntax
@@ -427,6 +426,11 @@ jsEscapable =
         |> source
         |> map ((,) LiteralKeyword)
         |> repeat oneOrMore
+
+
+consThenRevConcat : List Syntax -> Parser (List (List Syntax)) -> Parser (List Syntax)
+consThenRevConcat toCons =
+    map ((::) toCons >> List.reverse >> List.concat)
 
 
 toFragment : Syntax -> Fragment
