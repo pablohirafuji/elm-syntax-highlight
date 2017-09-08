@@ -2,6 +2,7 @@
 
 Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
+
 ## Themes
 
 You can define the theme either by copying and pasting the theme styles into your `.css` file or using the `useTheme` helper.
@@ -27,6 +28,9 @@ view model =
                 (pre [] [ code [] [ text model.elmCode ]])
         ]
 ```
+
+
+## [Changelog](https://github.com/pablohirafuji/elm-syntax-highlight/releases)
 
 
 ## Running demo
