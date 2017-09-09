@@ -1,4 +1,5 @@
 elm-stuff
 .DS_Store
 demo/elm.js
-.elm-static-html
+demo/elm-themes.js
+demo/themes.html
