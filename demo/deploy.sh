@@ -4,70 +4,52 @@
 
 set -e # Exit with nonzero exit code if anything fails
 
-SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
-TEMP_FOLDER="temp"
+DEMO_FOLDER="${TRAVIS_BUILD_DIR}/demo"
 ENCRYPTION_LABEL="2e639d5f7f73"
-
-echo "==> Building and deploying demo to gh-pages <=="
-
-# Save some useful information
+UGLIFYJS="node ${TRAVIS_BUILD_DIR}/node_modules/uglify-js/bin/uglifyjs"
 REPO=`git config remote.origin.url`
 SSH_REPO=${REPO/https:\/\/github.com\//git@github.com:}
 SHA=`git rev-parse --verify HEAD`
 
-# Clone the existing gh-pages for this repo into TEMP_FOLDER
-# Create a new empty branch if gh-pages doesn't exist yet (should only happen on first deploy)
-echo "Starting deployment"
+
+echo "Building and deploying demo"
 echo "Target: ${TARGET_BRANCH} branch"
-git clone $REPO $TEMP_FOLDER
-cd $TEMP_FOLDER
-git checkout $TARGET_BRANCH || git checkout --orphan $TARGET_BRANCH
-
-# Clean gh-pages existing contents
-echo "Removing old static content"
-git rm -rf . || exit 1
-cd ..
-
-# Run our compile script
-echo "Compiling demo into ${TEMP_FOLDER}/"
-npm install uglify-js -g
-cd demo
-elm package install --yes
-$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm make Main.elm --output ../$TEMP_FOLDER/elm.js
-# Run theme compile script
-npm install -g elm-static-html
-$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-static-html --filename Themes.elm --output ../$TEMP_FOLDER/themes.html
-cd ..
-cp demo/index.html $TEMP_FOLDER/index.html
-cd $TEMP_FOLDER
-uglifyjs elm.js --output elm.js
-sed -i -e 's/\/_compile\/Main.elm/elm.js/g' index.html
 
 
+# Compile
+## elm.js
+$SYSCONFCPUS $ELM_MAKE $DEMO_FOLDER/Main.elm --output $TRAVIS_BUILD_DIR/elm.js --yes
+$UGLIFYJS $TRAVIS_BUILD_DIR/elm.js --output $TRAVIS_BUILD_DIR/elm.js
+echo "elm.js done"
+
+## index.html
+cp $DEMO_FOLDER/index.html $TRAVIS_BUILD_DIR/index.html
+sed -i -e 's/\/_compile\/Main.elm/elm.js/g' $TRAVIS_BUILD_DIR/index.html
+echo "index.html done"
+
+## themes.html
+$SYSCONFCPUS $ELM_MAKE $DEMO_FOLDER/Themes.elm --output $DEMO_FOLDER/elm-themes.js --yes
+node $DEMO_FOLDER/make-themes.js
+cp $DEMO_FOLDER/themes.html $TRAVIS_BUILD_DIR/themes.html
+echo "themes.html done"
 
 
-# Now let's go have some fun with the cloned repo
+# Git commands
+echo "Deploying..."
+git checkout -b $TARGET_BRANCH
 git config user.name "Travis CI"
 git config user.email "pablohirafuji@gmail.com"
-
-# If there are no changes to the compiled gh-pages (e.g. this is a README update) then just bail.
-if [ $(git status --porcelain | wc -l) -lt 1 ]; then
-    echo "No changes to the output on this push; exiting deploy."
-    exit 0
-fi
-
-# Commit the "changes", i.e. the new version.
-# The delta will show diffs between new and old versions.
-git add --all
+git add index.html elm.js themes.html
 git commit -m "Deploy to GitHub Pages: ${SHA}"
+
 
 # Get the deploy key by using Travis's stored variables to decrypt deploy-key.enc
 ENCRYPTED_KEY_VAR="encrypted_${ENCRYPTION_LABEL}_key"
 ENCRYPTED_IV_VAR="encrypted_${ENCRYPTION_LABEL}_iv"
 ENCRYPTED_KEY=${!ENCRYPTED_KEY_VAR}
 ENCRYPTED_IV=${!ENCRYPTED_IV_VAR}
-openssl aes-256-cbc -K $ENCRYPTED_KEY -iv $ENCRYPTED_IV -in ../demo/deploy-key.enc -out deploy-key -d
+openssl aes-256-cbc -K $ENCRYPTED_KEY -iv $ENCRYPTED_IV -in $DEMO_FOLDER/deploy-key.enc -out deploy-key -d
 
 chmod 600 deploy-key
 eval `ssh-agent -s`
@@ -75,10 +57,6 @@ ssh-add deploy-key
 
 # Now that we're all set up, we can push.
 git push $SSH_REPO $TARGET_BRANCH
-
-echo "Cleaning up temp files"
-cd ..
-rm -Rf $TEMP_FOLDER
 
 echo "Deployed successfully."
 exit 0
