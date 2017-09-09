@@ -18,8 +18,10 @@ echo "Target: ${TARGET_BRANCH} branch"
 
 
 # Compile
+cd $DEMO_FOLDER
+
 ## elm.js
-$SYSCONFCPUS $ELM_MAKE $DEMO_FOLDER/Main.elm --output $TRAVIS_BUILD_DIR/elm.js --yes
+$SYSCONFCPUS $ELM_MAKE Main.elm --output $TRAVIS_BUILD_DIR/elm.js --yes
 $UGLIFYJS $TRAVIS_BUILD_DIR/elm.js --output $TRAVIS_BUILD_DIR/elm.js
 echo "elm.js done"
 
@@ -29,14 +31,15 @@ sed -i -e 's/\/_compile\/Main.elm/elm.js/g' $TRAVIS_BUILD_DIR/index.html
 echo "index.html done"
 
 ## themes.html
-$SYSCONFCPUS $ELM_MAKE $DEMO_FOLDER/Themes.elm --output $DEMO_FOLDER/elm-themes.js --yes
-node $DEMO_FOLDER/make-themes.js
+$SYSCONFCPUS $ELM_MAKE Themes.elm --output elm-themes.js --yes
+node make-themes.js
 cp $DEMO_FOLDER/themes.html $TRAVIS_BUILD_DIR/themes.html
 echo "themes.html done"
 
 
 # Git commands
 echo "Deploying..."
+cd $TRAVIS_BUILD_DIR
 git checkout -b $TARGET_BRANCH
 git config user.name "Travis CI"
 git config user.email "pablohirafuji@gmail.com"
