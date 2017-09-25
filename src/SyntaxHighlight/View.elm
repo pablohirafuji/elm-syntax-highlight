@@ -1,4 +1,4 @@
-module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml)
+module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml, toConsole, ConsoleOptions)
 
 import Html exposing (Html, text, span, br, code, div, pre)
 import Html.Attributes exposing (class, classList, attribute)
@@ -31,7 +31,7 @@ lineView start index { fragments, highlight } =
             [ ( "elmsh-line", True )
             , ( "elmsh-hl", highlight == Just Normal )
             , ( "elmsh-add", highlight == Just Add )
-            , ( "elmsh-del", highlight == Just Delete )
+            , ( "elmsh-del", highlight == Just Del )
             ]
         , attribute "data-elmsh-lc" (toString (start + index))
         ]
@@ -50,7 +50,7 @@ toInlineHtml lines =
                         [ classList
                             [ ( "elmsh-hl", highlight == Just Normal )
                             , ( "elmsh-add", highlight == Just Add )
-                            , ( "elmsh-del", highlight == Just Delete )
+                            , ( "elmsh-del", highlight == Just Del )
                             ]
                         ]
                         (List.map fragmentView fragments)
@@ -84,6 +84,9 @@ requiredStyleToString required =
         case required of
             Default ->
                 "0"
+
+            Comment ->
+                "-comm"
 
             Style1 ->
                 "1"
@@ -135,7 +138,7 @@ staticLineView start index { fragments, highlight } =
         , "elmsh-line "
         , emptyIfFalse (highlight == Just Normal) "elmsh-hl "
         , emptyIfFalse (highlight == Just Add) "elmsh-add "
-        , emptyIfFalse (highlight == Just Delete) "elmsh-del "
+        , emptyIfFalse (highlight == Just Del) "elmsh-del "
         , "\" data-elmsh-lc=\""
         , toString (start + index)
         , "\">"
@@ -158,7 +161,7 @@ toStaticInlineHtml lines =
                         "elmsh-hl "
                     , emptyIfFalse (highlight == Just Add)
                         "elmsh-add "
-                    , emptyIfFalse (highlight == Just Delete)
+                    , emptyIfFalse (highlight == Just Del)
                         "elmsh-del "
                     , List.map staticFragmentView fragments
                         |> String.concat
@@ -198,3 +201,81 @@ emptyIfFalse bool str =
         str
     else
         ""
+
+
+
+-- Console
+
+
+type alias ConsoleOptions =
+    { default : String -> String
+    , highlight : String -> String
+    , addition : String -> String
+    , deletion : String -> String
+    , comment : String -> String
+    , style1 : String -> String
+    , style2 : String -> String
+    , style3 : String -> String
+    , style4 : String -> String
+    , style5 : String -> String
+    , style6 : String -> String
+    , style7 : String -> String
+    }
+
+
+toConsole : ConsoleOptions -> List Line -> List String
+toConsole options lines =
+    List.map
+        (\{ highlight, fragments } ->
+            if highlight == Nothing then
+                List.map (consoleFragmentView options) fragments
+                    |> String.concat
+            else
+                List.map (consoleFragmentView options) fragments
+                    |> String.concat
+                    |> \n ->
+                        case highlight of
+                            Nothing ->
+                                n
+
+                            Just Normal ->
+                                options.highlight n
+
+                            Just Add ->
+                                options.addition n
+
+                            Just Del ->
+                                options.deletion n
+        )
+        lines
+
+
+consoleFragmentView : ConsoleOptions -> Fragment -> String
+consoleFragmentView options { text, requiredStyle, additionalClass } =
+    case requiredStyle of
+        Default ->
+            options.default text
+
+        Comment ->
+            options.comment text
+
+        Style1 ->
+            options.style1 text
+
+        Style2 ->
+            options.style2 text
+
+        Style3 ->
+            options.style3 text
+
+        Style4 ->
+            options.style4 text
+
+        Style5 ->
+            options.style5 text
+
+        Style6 ->
+            options.style6 text
+
+        Style7 ->
+            options.style7 text

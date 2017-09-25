@@ -8,7 +8,6 @@ import Html.Lazy
 import Html.Events exposing (onClick, onInput, onCheck)
 import Json.Decode as Json
 import SyntaxHighlight as SH
-import SyntaxHighlight.Line as SH exposing (Line, Highlight(..))
 import SyntaxHighlight.Theme as Theme
 import AnimationFrame
 
@@ -50,7 +49,7 @@ initModel =
     , lineCount = Just 1
     , theme = "Monokai"
     , customTheme = Theme.monokai
-    , highlight = HighlightModel (Just Add) 1 3
+    , highlight = HighlightModel (Just SH.Add) 1 3
     }
 
 
@@ -86,7 +85,7 @@ initLanguageModel codeStr =
 
 
 type alias HighlightModel =
-    { mode : Maybe Highlight
+    { mode : Maybe SH.Highlight
     , start : Int
     , end : Int
     }
@@ -190,7 +189,7 @@ type Msg
     | SetLineCountStart Int
     | SetColorScheme String
     | SetCustomColorScheme String
-    | SetHighlightMode (Maybe Highlight)
+    | SetHighlightMode (Maybe SH.Highlight)
     | SetHighlightStart Int
     | SetHighlightEnd Int
     | ApplyHighlight
@@ -418,7 +417,7 @@ toHtmlCss =
     toHtml SH.css
 
 
-toHtml : (String -> Result x (List Line)) -> Maybe Int -> String -> HighlightModel -> Html Msg
+toHtml : (String -> Result x SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
 toHtml parser maybeStart str hlModel =
     parser str
         |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
@@ -531,9 +530,9 @@ viewHighlightOptions { mode, start, end } =
                         |> Html.Events.on "change"
                     ]
                     [ option [ selected (mode == Nothing) ] [ text "No highlight" ]
-                    , option [ selected (mode == Just Normal) ] [ text "Highlight" ]
-                    , option [ selected (mode == Just Add) ] [ text "Addition" ]
-                    , option [ selected (mode == Just Delete) ] [ text "Deletion" ]
+                    , option [ selected (mode == Just SH.Highlight) ] [ text "Highlight" ]
+                    , option [ selected (mode == Just SH.Add) ] [ text "Addition" ]
+                    , option [ selected (mode == Just SH.Del) ] [ text "Deletion" ]
                     ]
                 ]
             ]
@@ -543,17 +542,17 @@ viewHighlightOptions { mode, start, end } =
         ]
 
 
-toHighlightMode : String -> Maybe Highlight
+toHighlightMode : String -> Maybe SH.Highlight
 toHighlightMode str =
     case str of
         "Highlight" ->
-            Just Normal
+            Just SH.Highlight
 
         "Addition" ->
-            Just Add
+            Just SH.Add
 
         "Deletion" ->
-            Just Delete
+            Just SH.Del
 
         _ ->
             Nothing

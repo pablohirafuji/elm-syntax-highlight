@@ -37,22 +37,12 @@ type alias Fragment =
     }
 
 
-{-| Highlight type. `Normal` will highlight the line in a way to differentiate it from the rest, like github's yellow background.
-`Add` will highlight in a manner that gives the ideia of new content added.
-`Delete` will highlight in a manner that gives the ideia of deleted content.
-The specific styles will depend on the `Theme` chosen.
--}
 type Highlight
     = Normal
     | Add
-    | Delete
+    | Del
 
 
-{-| Highlight lines given a highlight type, start and end index.
-If no highlight type is given (`Nothing`), it will remove any
-highlight from that lines.
-Negative indexes are taken starting from the *end* of the list.
--}
 highlightLines : Maybe Highlight -> Int -> Int -> List Line -> List Line
 highlightLines maybeHighlight start end lines =
     let

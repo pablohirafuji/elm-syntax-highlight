@@ -5,7 +5,7 @@ module SyntaxHighlight.Line.Helpers
 
 import SyntaxHighlight.Line exposing (Line, Fragment)
 import SyntaxHighlight.Style as Style exposing (Required(..))
-import SyntaxHighlight.Language.Type exposing (Token, Syntax(..))
+import SyntaxHighlight.Language.Type as T exposing (Token, Syntax(..))
 
 
 toLines : (a -> ( Required, String )) -> List (Token a) -> List Line
@@ -52,10 +52,10 @@ toFragment toStyle ( syntax, text ) =
             , additionalClass = ""
             }
 
-        Comment ->
+        T.Comment ->
             { text = text
-            , requiredStyle = Default
-            , additionalClass = "comm"
+            , requiredStyle = Style.Comment
+            , additionalClass = ""
             }
 
         LineBreak ->
