@@ -212,7 +212,7 @@ To preview the themes, check out the [demo](https://pablohirafuji.github.io/elm-
 
 If you prefer to use CSS external stylesheet, you do **not** need this,
 just copy the theme CSS into your stylesheet.
-All themes can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md).
+All themes can be found [here](https://pablohirafuji.github.io/elm-syntax-highlight/themes.html).
 
 -}
 useTheme : Theme -> Html msg

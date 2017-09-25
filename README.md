@@ -9,7 +9,7 @@ You can define the theme either by copying and pasting the theme styles into you
 
 ### Copying and pasting the theme
 
-The theme and required styles can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md).
+The theme and required styles can be found [here](https://pablohirafuji.github.io/elm-syntax-highlight/themes.html).
 
 ### Using `useTheme` helper
 

@@ -1,5 +1,6 @@
 port module Themes exposing (..)
 
+import SyntaxHighlight as SH
 import SyntaxHighlight.Theme as Theme
 
 
@@ -32,7 +33,12 @@ init =
     , themesList
         (List.map
             (\( name, content ) ->
-                ThemeModel name (String.trim content)
+                ThemeModel
+                    name
+                    (SH.css (String.trim content)
+                        |> Result.map (SH.toStaticBlockHtml (Just 1))
+                        |> Result.withDefault (String.trim content)
+                    )
             )
             (requiredStyles :: Theme.all)
         )
