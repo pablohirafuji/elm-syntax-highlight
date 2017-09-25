@@ -1,4 +1,4 @@
-module SyntaxHighlight.Helpers
+module SyntaxHighlight.Language.Helpers
     exposing
         ( isWhitespace
         , whitespaceCharSet

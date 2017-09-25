@@ -1,36 +1,36 @@
 module SyntaxHighlight.Language.Css
     exposing
-        ( parse
-          -- Exposing just for tests purpose
-        , toSyntax
-        , SyntaxType(..)
+        ( toLines
+        , Syntax(..)
         , AtRule(..)
         , Selector(..)
         , AttributeSelector(..)
+        , syntaxToStyle
+          -- Exposing for tests purpose
+        , toRevTokens
         )
 
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
-import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
-import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, whitespaceCharSet, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen, escapable, isEscapable)
+import SyntaxHighlight.Language.Type as T
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, whitespaceCharSet, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen, escapable, isEscapable)
+import SyntaxHighlight.Line exposing (Line)
+import SyntaxHighlight.Line.Helpers as Line
+import SyntaxHighlight.Style as Style exposing (Required(..))
 
 
-type alias Syntax =
-    ( SyntaxType, String )
+type alias Token =
+    T.Token Syntax
 
 
-type SyntaxType
-    = Normal
-    | Comment
-    | String
+type Syntax
+    = String
     | AtRule AtRule
     | Selector Selector
     | Property
     | PropertyValue
     | Number
     | Unit
-    | LineBreak
 
 
 type AtRule
@@ -57,21 +57,21 @@ type AttributeSelector
     | AttributeOperator
 
 
-parse : String -> Result Error (List Line)
-parse =
-    toSyntax
-        >> Result.map (toLines LineBreak toFragment)
+toLines : String -> Result Error (List Line)
+toLines =
+    toRevTokens
+        >> Result.map (Line.toLines syntaxToStyle)
 
 
-toSyntax : String -> Result Error (List Syntax)
-toSyntax =
+toRevTokens : String -> Result Error (List Token)
+toRevTokens =
     mainLoop
         |> repeat zeroOrMore
         |> map (List.reverse >> List.concat)
         |> Parser.run
 
 
-mainLoop : Parser (List Syntax)
+mainLoop : Parser (List Token)
 mainLoop =
     oneOf
         [ whitespaceOrComment
@@ -79,7 +79,7 @@ mainLoop =
         , selector
         , declarationBlock
         , keep (Exactly 1) (always True)
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         ]
 
 
@@ -87,7 +87,7 @@ mainLoop =
 -- At-Rules
 
 
-atRule : Parser (List Syntax)
+atRule : Parser (List Token)
 atRule =
     symbol "@"
         |> thenIgnore zeroOrMore isSelectorNameChar
@@ -95,7 +95,7 @@ atRule =
         |> andThen atRuleHelper
 
 
-atRuleHelper : String -> Parser (List Syntax)
+atRuleHelper : String -> Parser (List Token)
 atRuleHelper atRule =
     case atRule of
         "@import" ->
@@ -105,7 +105,7 @@ atRuleHelper atRule =
                 , stringLiteral
                 , atRuleKeywordOrValue
                 , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) Normal >> List.singleton)
+                    |> map ((,) T.Normal >> List.singleton)
                 ]
                 |> repeat zeroOrMore
                 |> map (finishAtRules atRule)
@@ -116,9 +116,9 @@ atRuleHelper atRule =
                 , stringArg "url"
                 , stringLiteral
                 , keep oneOrMore isSelectorNameChar
-                    |> map ((,) (AtRule Prefix) >> List.singleton)
+                    |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
                 , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) Normal >> List.singleton)
+                    |> map ((,) T.Normal >> List.singleton)
                 ]
                 |> repeat zeroOrMore
                 |> map (finishAtRules atRule)
@@ -128,9 +128,9 @@ atRuleHelper atRule =
                 [ whitespaceOrComment
                 , stringLiteral
                 , keep oneOrMore isSelectorNameChar
-                    |> map ((,) String >> List.singleton)
+                    |> map ((,) (T.C String) >> List.singleton)
                 , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) Normal >> List.singleton)
+                    |> map ((,) T.Normal >> List.singleton)
                 ]
                 |> repeat zeroOrMore
                 |> map (finishAtRules atRule)
@@ -152,9 +152,9 @@ atRuleHelper atRule =
             oneOf
                 [ whitespaceOrComment
                 , keep oneOrMore isSelectorNameChar
-                    |> map ((,) (AtRule Prefix) >> List.singleton)
+                    |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
                 , keep (Exactly 1) (\c -> c /= '{')
-                    |> map ((,) Normal >> List.singleton)
+                    |> map ((,) T.Normal >> List.singleton)
                 ]
                 |> repeat zeroOrMore
                 |> map (finishAtRules atRule)
@@ -162,63 +162,63 @@ atRuleHelper atRule =
 
         _ ->
             if Set.member atRule atRuleSet then
-                succeed [ ( AtRule Identifier, atRule ) ]
+                succeed [ ( T.C (AtRule Identifier), atRule ) ]
             else
-                succeed [ ( Normal, atRule ) ]
+                succeed [ ( T.Normal, atRule ) ]
 
 
-atRuleKeywordOrValue : Parser (List Syntax)
+atRuleKeywordOrValue : Parser (List Token)
 atRuleKeywordOrValue =
     keep oneOrMore isSelectorNameChar
         |> map
             (\n ->
                 if isAtRuleKeyword n then
-                    [ ( AtRule Keyword, n ) ]
+                    [ ( T.C (AtRule Keyword), n ) ]
                 else
-                    [ ( AtRule AtRuleValue, n ) ]
+                    [ ( T.C (AtRule AtRuleValue), n ) ]
             )
 
 
-mediaOrSupports : String -> Parser (List Syntax)
+mediaOrSupports : String -> Parser (List Token)
 mediaOrSupports atRule =
     oneOf
         [ whitespaceOrComment
         , stringLiteral
         , atRuleKeywordOrValue
         , keep (Exactly 1) (\c -> c /= '{')
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         ]
         |> repeat zeroOrMore
         |> map (finishAtRules atRule)
         |> andThen nestableAtRuleOpener
 
 
-keyframesOrCounterStyle : String -> Parser (List Syntax)
+keyframesOrCounterStyle : String -> Parser (List Token)
 keyframesOrCounterStyle atRule =
     oneOf
         [ whitespaceOrComment
         , keep oneOrMore isSelectorNameChar
-            |> map ((,) (AtRule Prefix) >> List.singleton)
+            |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
         , keep (Exactly 1) (\c -> c /= '{')
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         ]
         |> repeat zeroOrMore
         |> map (finishAtRules atRule)
 
 
-finishAtRules : String -> List (List Syntax) -> List Syntax
+finishAtRules : String -> List (List Token) -> List Token
 finishAtRules atRule ns =
-    [ ( AtRule Identifier, atRule ) ]
+    [ ( T.C (AtRule Identifier), atRule ) ]
         :: ns
         |> List.reverse
         |> List.concat
 
 
-nestableAtRuleOpener : List Syntax -> Parser (List Syntax)
+nestableAtRuleOpener : List Token -> Parser (List Token)
 nestableAtRuleOpener ns =
     oneOf
         [ symbol "{"
-            |> map (always (( Normal, "{" ) :: ns))
+            |> map (always (( T.Normal, "{" ) :: ns))
         , succeed ns
         ]
 
@@ -258,7 +258,7 @@ atRuleSet =
 -- Selectors
 
 
-selector : Parser (List Syntax)
+selector : Parser (List Token)
 selector =
     oneOf
         [ oneOf
@@ -270,7 +270,7 @@ selector =
             , pseudoElement
             , pseudoClass
             ]
-            |> map (Tuple.mapFirst Selector >> List.singleton)
+            |> map (Tuple.mapFirst (T.C << Selector) >> List.singleton)
         , attributeSelector
         ]
 
@@ -343,10 +343,10 @@ selectorNameInvalidCharSet =
     Set.fromList [ ':', '{', '}', ',', '.', '#', '>', '+', '~', '*', '[', ']', '|', ';', '(', ')' ]
 
 
-attributeSelector : Parser (List Syntax)
+attributeSelector : Parser (List Token)
 attributeSelector =
     symbol "["
-        |> map (always ( Normal, "[" ))
+        |> map (always ( T.Normal, "[" ))
         |> andThen
             (\opener ->
                 repeat zeroOrMore attributeSelectorLoop
@@ -358,7 +358,7 @@ attributeSelector =
             )
 
 
-attributeSelectorLoop : Parser (List Syntax)
+attributeSelectorLoop : Parser (List Token)
 attributeSelectorLoop =
     oneOf
         [ whitespaceOrComment
@@ -372,10 +372,10 @@ attributeSelectorLoop =
         ]
 
 
-attributeName : Parser Syntax
+attributeName : Parser Token
 attributeName =
     keep oneOrMore (\c -> not <| Set.member c attSelNameInvalidCharSet)
-        |> map ((,) (Selector (AttributeSelector AttributeName)))
+        |> map ((,) (T.C (Selector (AttributeSelector AttributeName))))
 
 
 attSelNameInvalidCharSet : Set Char
@@ -389,7 +389,7 @@ attSelOperatorCharSet =
     Set.fromList [ '=', '~', '|', '^', '$', '*' ]
 
 
-attributeOperator : Parser Syntax
+attributeOperator : Parser Token
 attributeOperator =
     oneOf
         [ symbol "~="
@@ -400,10 +400,10 @@ attributeOperator =
         , symbol "="
         ]
         |> source
-        |> map ((,) (Selector (AttributeSelector AttributeOperator)))
+        |> map ((,) (T.C (Selector (AttributeSelector AttributeOperator))))
 
 
-attributeValue : List Syntax -> Parser (List Syntax)
+attributeValue : List Token -> Parser (List Token)
 attributeValue revSyntaxes =
     oneOf
         [ whitespaceOrComment
@@ -411,7 +411,7 @@ attributeValue revSyntaxes =
         , stringLiteral
             |> addThen succeed revSyntaxes
         , keep oneOrMore (\c -> c /= ']' && not (isWhitespace c))
-            |> map ((,) (Selector (AttributeSelector AttributeValue)))
+            |> map ((,) (T.C (Selector (AttributeSelector AttributeValue))))
             |> consThen succeed revSyntaxes
         , succeed revSyntaxes
         ]
@@ -421,14 +421,14 @@ attributeValue revSyntaxes =
 -- Declaration Block
 
 
-declarationBlock : Parser (List Syntax)
+declarationBlock : Parser (List Token)
 declarationBlock =
     keep oneOrMore ((==) '{')
-        |> map ((,) Normal)
+        |> map ((,) T.Normal)
         |> andThen declarationBlockHelper
 
 
-declarationBlockHelper : Syntax -> Parser (List Syntax)
+declarationBlockHelper : Token -> Parser (List Token)
 declarationBlockHelper opener =
     repeat zeroOrMore declarationLoop
         |> map
@@ -438,14 +438,14 @@ declarationBlockHelper opener =
             )
 
 
-declarationLoop : Parser (List Syntax)
+declarationLoop : Parser (List Token)
 declarationLoop =
     oneOf
         [ whitespaceOrComment
         , keep oneOrMore isPropertyChar
-            |> map ((,) Property >> List.singleton)
+            |> map ((,) (T.C Property) >> List.singleton)
         , keep oneOrMore (\c -> c == ';' || c == '/')
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         , value
         ]
 
@@ -455,14 +455,14 @@ isPropertyChar c =
     not (isWhitespace c || isCommentChar c || c == ':' || c == ';' || c == '}')
 
 
-value : Parser (List Syntax)
+value : Parser (List Token)
 value =
     keep oneOrMore ((==) ':')
-        |> map ((,) Normal)
+        |> map ((,) T.Normal)
         |> andThen valueHelper
 
 
-valueHelper : Syntax -> Parser (List Syntax)
+valueHelper : Token -> Parser (List Token)
 valueHelper opener =
     repeat zeroOrMore valueLoop
         |> map
@@ -472,7 +472,7 @@ valueHelper opener =
             )
 
 
-valueLoop : Parser (List Syntax)
+valueLoop : Parser (List Token)
 valueLoop =
     oneOf
         [ whitespaceOrComment
@@ -486,18 +486,18 @@ valueLoop =
             |> map
                 (\n ->
                     if isUnit n then
-                        [ ( Unit, n ) ]
+                        [ ( T.C Unit, n ) ]
                     else
-                        [ ( PropertyValue, n ) ]
+                        [ ( T.C PropertyValue, n ) ]
                 )
         , keep oneOrMore isNotPropertyValueChar
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         , keep oneOrMore isOperatorChar
-            |> map ((,) Unit >> List.singleton)
+            |> map ((,) (T.C Unit) >> List.singleton)
         ]
 
 
-hexColor : Parser (List Syntax)
+hexColor : Parser (List Token)
 hexColor =
     --SyntaxHighlight.Helpers.hexColor
     --    |> source
@@ -506,21 +506,21 @@ hexColor =
         |> andThen
             (\_ ->
                 keep zeroOrMore isPropertyValueChar
-                    |> map (\n -> [ ( Number, "#" ++ n ) ])
+                    |> map (\n -> [ ( T.C Number, "#" ++ n ) ])
             )
 
 
-stringArg : String -> Parser (List Syntax)
+stringArg : String -> Parser (List Token)
 stringArg fnStr =
     keyword (fnStr ++ "(")
-        |> map (always [ ( Normal, "(" ), ( PropertyValue, fnStr ) ])
+        |> map (always [ ( T.Normal, "(" ), ( T.C PropertyValue, fnStr ) ])
         |> andThen
             (\opener ->
                 oneOf
                     [ stringLiteral
                         |> map (\ns -> ns ++ opener)
                     , keep zeroOrMore ((/=) ')')
-                        |> map (\n -> ( String, n ) :: opener)
+                        |> map (\n -> ( T.C String, n ) :: opener)
                     ]
             )
 
@@ -592,7 +592,7 @@ operatorCharSet =
 -- String literal
 
 
-stringLiteral : Parser (List Syntax)
+stringLiteral : Parser (List Token)
 stringLiteral =
     oneOf
         [ quote
@@ -600,23 +600,23 @@ stringLiteral =
         ]
 
 
-quote : Parser (List Syntax)
+quote : Parser (List Token)
 quote =
     delimited quoteDelimiter
 
 
-quoteDelimiter : Delimiter Syntax
+quoteDelimiter : Delimiter Token
 quoteDelimiter =
     { start = "'"
     , end = "'"
     , isNestable = False
-    , defaultMap = ((,) String)
+    , defaultMap = ((,) (T.C String))
     , innerParsers = [ lineBreak, cssEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
 
 
-doubleQuote : Parser (List Syntax)
+doubleQuote : Parser (List Token)
 doubleQuote =
     delimited
         { quoteDelimiter
@@ -631,16 +631,16 @@ isStringLiteralChar c =
 
 
 
--- Comment
+-- T.Comment
 
 
-comment : Parser (List Syntax)
+comment : Parser (List Token)
 comment =
     delimited
         { start = "/*"
         , end = "*/"
         , isNestable = False
-        , defaultMap = ((,) Comment)
+        , defaultMap = ((,) T.Comment)
         , innerParsers = [ lineBreak ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
@@ -655,124 +655,115 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : Parser (List Syntax)
+whitespaceOrComment : Parser (List Token)
 whitespaceOrComment =
     oneOf
         [ keep oneOrMore isSpace
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         , lineBreak
         , comment
         ]
 
 
-lineBreak : Parser (List Syntax)
+lineBreak : Parser (List Token)
 lineBreak =
     keep (Exactly 1) isLineBreak
-        |> map ((,) LineBreak)
+        |> map ((,) T.LineBreak)
         |> repeat oneOrMore
 
 
-number : Parser Syntax
+number : Parser Token
 number =
-    SyntaxHighlight.Helpers.number
+    SyntaxHighlight.Language.Helpers.number
         |> source
-        |> map ((,) Number)
+        |> map ((,) (T.C Number))
 
 
-cssEscapable : Parser (List Syntax)
+cssEscapable : Parser (List Token)
 cssEscapable =
     escapable
         |> source
-        |> map ((,) Number)
+        |> map ((,) (T.C Number))
         |> repeat oneOrMore
 
 
-toFragment : Syntax -> Fragment
-toFragment ( syntaxType, text ) =
-    case syntaxType of
-        Normal ->
-            normal Default text
-
-        Comment ->
-            normal Color1 text
-
+syntaxToStyle : Syntax -> ( Style.Required, String )
+syntaxToStyle syntax =
+    case syntax of
         String ->
-            normal Color2 text
+            ( Style2, "css-s" )
 
         AtRule atRule ->
-            atRuleToFragment atRule text
+            atRuleToFragment atRule
 
         Selector selector ->
-            selectorToFragment selector text
+            selectorToFragment selector
 
         Property ->
-            emphasis Color4 text
+            ( Style4, "css-p" )
 
         PropertyValue ->
-            normal Color4 text
+            ( Style4, "css-pv" )
 
         Number ->
-            normal Color6 text
+            ( Style1, "css-n" )
 
         Unit ->
-            normal Color3 text
-
-        LineBreak ->
-            normal Default text
+            ( Style3, "css-u" )
 
 
-atRuleToFragment : AtRule -> String -> Fragment
-atRuleToFragment atRule text =
+atRuleToFragment : AtRule -> ( Style.Required, String )
+atRuleToFragment atRule =
     case atRule of
         Identifier ->
-            strong Color3 text
+            ( Style3, "css-ar-i" )
 
         Prefix ->
-            normal Color5 text
+            ( Style5, "css-ar-p" )
 
         Keyword ->
-            normal Color3 text
+            ( Style3, "css-ar-k" )
 
         AtRuleValue ->
-            normal Color4 text
+            ( Style4, "css-ar-v" )
 
 
-selectorToFragment : Selector -> String -> Fragment
-selectorToFragment selector text =
+selectorToFragment : Selector -> ( Style.Required, String )
+selectorToFragment selector =
     case selector of
         Element ->
-            normal Color3 text
+            ( Style3, "css-s-e" )
 
         Id ->
-            normal Color5 text
+            ( Style5, "css-s-i" )
 
         Class ->
-            normal Color5 text
+            ( Style5, "css-s-cl" )
 
         Combinator ->
-            normal Color7 text
+            ( Style7, "css-s-c" )
 
         Universal ->
-            normal Color3 text
+            ( Style3, "css-s-u" )
 
         AttributeSelector att ->
-            attributeSelectorToFragment att text
+            attributeSelectorToFragment att
 
         PseudoElement ->
-            normal Default text
+            ( Default, "css-s-pe" )
 
         PseudoClass ->
-            normal Default text
+            ( Default, "css-s-pc" )
 
 
-attributeSelectorToFragment : AttributeSelector -> String -> Fragment
-attributeSelectorToFragment att text =
+attributeSelectorToFragment : AttributeSelector -> ( Style.Required, String )
+attributeSelectorToFragment att =
     case att of
         AttributeName ->
-            normal Color5 text
+            ( Style5, "css-s-a-an" )
 
         AttributeValue ->
-            normal Color2 text
+            ( Style2, "css-s-a-av" )
 
         AttributeOperator ->
-            normal Color3 text
+            ( Style3, "css-s-a-o" )

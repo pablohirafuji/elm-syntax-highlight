@@ -1,9 +1,11 @@
 module Language.Elm exposing (suite)
 
 import Result exposing (Result(..))
-import Expect exposing (Expectation, equal)
+import Expect exposing (Expectation, equal, onFail)
+import Fuzz exposing (string)
 import Test exposing (..)
-import SyntaxHighlight.Language.Elm as Elm exposing (..)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import SyntaxHighlight.Language.Elm as Elm exposing (Syntax(..), toRevTokens)
 
 
 suite : Test
@@ -11,74 +13,80 @@ suite =
     describe "Elm Language Test Suite"
         [ test "Module declaration" <|
             \() ->
-                Elm.toSyntax moduleDeclarationText
+                Elm.toRevTokens moduleDeclarationText
                     |> Result.map List.reverse
                     |> equal (Ok moduleDeclarationResult)
         , test "Port module declaration" <|
             \() ->
-                Elm.toSyntax ("port " ++ moduleDeclarationText)
+                Elm.toRevTokens ("port " ++ moduleDeclarationText)
                     |> Result.map List.reverse
-                    |> equal (Ok ([ ( Keyword, "port" ), ( Space, " " ) ] ++ moduleDeclarationResult))
+                    |> equal (Ok ([ ( T.C Keyword, "port" ), ( Normal, " " ) ] ++ moduleDeclarationResult))
         , test "Import declaration" <|
             \() ->
-                Elm.toSyntax "import Html.Attributes as Att exposing (Html, classList, (|>))"
+                Elm.toRevTokens "import Html.Attributes as Att exposing (Html, classList, (|>))"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Keyword, "import" ), ( Space, " " ), ( Normal, "Html.Attributes" ), ( Space, " " ), ( Keyword, "as" ), ( Space, " " ), ( Normal, "Att" ), ( Space, " " ), ( Keyword, "exposing" ), ( Space, " " ), ( Normal, "(" ), ( TypeSignature, "Html" ), ( Normal, "," ), ( Space, " " ), ( Function, "classList" ), ( Normal, "," ), ( Space, " " ), ( Function, "(|>)" ), ( Normal, ")" ) ])
+                    |> equal (Ok [ ( C Keyword, "import" ), ( Normal, " " ), ( Normal, "Html.Attributes" ), ( Normal, " " ), ( C Keyword, "as" ), ( Normal, " " ), ( Normal, "Att" ), ( Normal, " " ), ( T.C Keyword, "exposing" ), ( Normal, " " ), ( Normal, "(" ), ( C TypeSignature, "Html" ), ( Normal, "," ), ( Normal, " " ), ( C Function, "classList" ), ( Normal, "," ), ( Normal, " " ), ( C Function, "(|>)" ), ( Normal, ")" ) ])
         , test "Function signature" <|
             \() ->
-                Elm.toSyntax functionSignatureText
+                Elm.toRevTokens functionSignatureText
                     |> Result.map List.reverse
                     |> equal (Ok functionSignatureResult)
         , test "Port function signature" <|
             \() ->
-                Elm.toSyntax ("port " ++ functionSignatureText)
+                Elm.toRevTokens ("port " ++ functionSignatureText)
                     |> Result.map List.reverse
-                    |> equal (Ok ([ ( Keyword, "port" ), ( Space, " " ) ] ++ functionSignatureResult))
+                    |> equal (Ok ([ ( T.C Keyword, "port" ), ( Normal, " " ) ] ++ functionSignatureResult))
         , test "Function body" <|
             \() ->
-                Elm.toSyntax "text str ="
+                Elm.toRevTokens "text str ="
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "text" ), ( Space, " " ), ( Normal, "str" ), ( Space, " " ), ( BasicSymbol, "=" ) ])
+                    |> equal (Ok [ ( C Function, "text" ), ( Normal, " " ), ( Normal, "str" ), ( Normal, " " ), ( C BasicSymbol, "=" ) ])
         , test "Case statement" <|
             \() ->
-                Elm.toSyntax "    case maybe of\n        Just str -> str\n        Nothing -> str"
+                Elm.toRevTokens "    case maybe of\n        Just str -> str\n        Nothing -> str"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Space, "    " ), ( Keyword, "case" ), ( Space, " " ), ( Normal, "maybe" ), ( Space, " " ), ( Keyword, "of" ), ( LineBreak, "\n" ), ( Space, "        " ), ( Capitalized, "Just" ), ( Space, " " ), ( Normal, "str" ), ( Space, " " ), ( BasicSymbol, "->" ), ( Space, " " ), ( Normal, "str" ), ( LineBreak, "\n" ), ( Space, "        " ), ( Capitalized, "Nothing" ), ( Space, " " ), ( BasicSymbol, "->" ), ( Space, " " ), ( Normal, "str" ) ])
+                    |> equal (Ok [ ( Normal, "    " ), ( T.C Keyword, "case" ), ( Normal, " " ), ( Normal, "maybe" ), ( Normal, " " ), ( T.C Keyword, "of" ), ( LineBreak, "\n" ), ( Normal, "        " ), ( C Capitalized, "Just" ), ( Normal, " " ), ( Normal, "str" ), ( Normal, " " ), ( C BasicSymbol, "->" ), ( Normal, " " ), ( Normal, "str" ), ( LineBreak, "\n" ), ( Normal, "        " ), ( C Capitalized, "Nothing" ), ( Normal, " " ), ( C BasicSymbol, "->" ), ( Normal, " " ), ( Normal, "str" ) ])
         , test "Numbers" <|
             \() ->
-                Elm.toSyntax "math = (3+4.453) / 5 * 4.4"
+                Elm.toRevTokens "math = (3+4.453) / 5 * 4.4"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "math" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( BasicSymbol, "(" ), ( Number, "3" ), ( BasicSymbol, "+" ), ( Number, "4.453" ), ( BasicSymbol, ")" ), ( Space, " " ), ( BasicSymbol, "/" ), ( Space, " " ), ( Number, "5" ), ( Space, " " ), ( BasicSymbol, "*" ), ( Space, " " ), ( Number, "4.4" ) ])
+                    |> equal (Ok [ ( C Function, "math" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( C BasicSymbol, "(" ), ( C Number, "3" ), ( C BasicSymbol, "+" ), ( C Number, "4.453" ), ( C BasicSymbol, ")" ), ( Normal, " " ), ( C BasicSymbol, "/" ), ( Normal, " " ), ( C Number, "5" ), ( Normal, " " ), ( C BasicSymbol, "*" ), ( Normal, " " ), ( C Number, "4.4" ) ])
         , test "String literal: Single quote" <|
             \() ->
-                Elm.toSyntax "char = 'c'"
+                Elm.toRevTokens "char = 'c'"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "char" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( String, "'" ), ( String, "c" ), ( String, "'" ) ])
+                    |> equal (Ok [ ( C Function, "char" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( C String, "'" ), ( C String, "c" ), ( C String, "'" ) ])
         , test "String literal: Double quote" <|
             \() ->
-                Elm.toSyntax "string = \"hello\""
+                Elm.toRevTokens "string = \"hello\""
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "string" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( String, "\"" ), ( String, "hello" ), ( String, "\"" ) ])
+                    |> equal (Ok [ ( C Function, "string" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "hello" ), ( C String, "\"" ) ])
         , test "String literal: Triple double quote" <|
             \() ->
-                Elm.toSyntax "string = \"\"\"Great\nString\" with \"\" double quotes\"\"\" finished"
+                Elm.toRevTokens "string = \"\"\"Great\nString\" with \"\" double quotes\"\"\" finished"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "string" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( String, "\"\"\"" ), ( String, "Great" ), ( LineBreak, "\n" ), ( String, "String" ), ( String, "\" with " ), ( String, "\"" ), ( String, "\" double quotes" ), ( String, "\"\"\"" ), ( Space, " " ), ( Normal, "finished" ) ])
+                    |> equal (Ok [ ( C Function, "string" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( C String, "\"\"\"" ), ( C String, "Great" ), ( LineBreak, "\n" ), ( C String, "String" ), ( C String, "\" with " ), ( C String, "\"" ), ( C String, "\" double quotes" ), ( C String, "\"\"\"" ), ( Normal, " " ), ( Normal, "finished" ) ])
         , test "Comment: Inline" <|
             \() ->
-                Elm.toSyntax "function = -- Comment\n    functionBody"
+                Elm.toRevTokens "function = -- Comment\n    functionBody"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "function" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( Comment, "-- Comment" ), ( LineBreak, "\n" ), ( Space, "    " ), ( Normal, "functionBody" ) ])
+                    |> equal (Ok [ ( C Function, "function" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( Comment, "-- Comment" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Normal, "functionBody" ) ])
         , test "Comment: Multiline" <|
             \() ->
-                Elm.toSyntax "function = {- Multi\nline\ncomment-} functionBody"
+                Elm.toRevTokens "function = {- Multi\nline\ncomment-} functionBody"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "function" ), ( Space, " " ), ( BasicSymbol, "=" ), ( Space, " " ), ( Comment, "{-" ), ( Comment, " Multi" ), ( LineBreak, "\n" ), ( Comment, "line" ), ( LineBreak, "\n" ), ( Comment, "comment" ), ( Comment, "-}" ), ( Space, " " ), ( Normal, "functionBody" ) ])
+                    |> equal (Ok [ ( C Function, "function" ), ( Normal, " " ), ( C BasicSymbol, "=" ), ( Normal, " " ), ( Comment, "{-" ), ( Comment, " Multi" ), ( LineBreak, "\n" ), ( Comment, "line" ), ( LineBreak, "\n" ), ( Comment, "comment" ), ( Comment, "-}" ), ( Normal, " " ), ( Normal, "functionBody" ) ])
         , test "Infix" <|
             \() ->
-                Elm.toSyntax "(,)"
+                Elm.toRevTokens "(,)"
                     |> Result.map List.reverse
-                    |> equal (Ok [ ( Function, "(,)" ) ])
+                    |> equal (Ok [ ( C Function, "(,)" ) ])
+        , fuzz string "The result should always be Ok" <|
+            \fuzzStr ->
+                Elm.toRevTokens fuzzStr
+                    |> Result.map (always [])
+                    |> equal (Ok [])
+                    |> onFail ("Resulting error string: \"" ++ fuzzStr ++ "\"")
         ]
 
 
@@ -87,9 +95,9 @@ moduleDeclarationText =
     "module Main exposing (parser, Type)"
 
 
-moduleDeclarationResult : List ( SyntaxType, String )
+moduleDeclarationResult : List ( T.Syntax Elm.Syntax, String )
 moduleDeclarationResult =
-    [ ( Keyword, "module" ), ( Space, " " ), ( Normal, "Main" ), ( Space, " " ), ( Keyword, "exposing" ), ( Space, " " ), ( Normal, "(" ), ( Function, "parser" ), ( Normal, "," ), ( Space, " " ), ( TypeSignature, "Type" ), ( Normal, ")" ) ]
+    [ ( T.C Keyword, "module" ), ( Normal, " " ), ( Normal, "Main" ), ( Normal, " " ), ( T.C Keyword, "exposing" ), ( Normal, " " ), ( Normal, "(" ), ( C Function, "parser" ), ( Normal, "," ), ( Normal, " " ), ( T.C TypeSignature, "Type" ), ( Normal, ")" ) ]
 
 
 functionSignatureText : String
@@ -97,6 +105,6 @@ functionSignatureText =
     "text : (SyntaxType, String) -> Html msg"
 
 
-functionSignatureResult : List ( SyntaxType, String )
+functionSignatureResult : List ( T.Syntax Elm.Syntax, String )
 functionSignatureResult =
-    [ ( Function, "text" ), ( Space, " " ), ( BasicSymbol, ":" ), ( Space, " " ), ( Normal, "(" ), ( TypeSignature, "SyntaxType" ), ( Normal, "," ), ( Space, " " ), ( TypeSignature, "String" ), ( Normal, ")" ), ( Space, " " ), ( BasicSymbol, "->" ), ( Space, " " ), ( TypeSignature, "Html" ), ( Space, " " ), ( Normal, "msg" ) ]
+    [ ( C Function, "text" ), ( Normal, " " ), ( C BasicSymbol, ":" ), ( Normal, " " ), ( Normal, "(" ), ( T.C TypeSignature, "SyntaxType" ), ( Normal, "," ), ( Normal, " " ), ( T.C TypeSignature, "String" ), ( Normal, ")" ), ( Normal, " " ), ( C BasicSymbol, "->" ), ( Normal, " " ), ( T.C TypeSignature, "Html" ), ( Normal, " " ), ( Normal, "msg" ) ]

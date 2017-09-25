@@ -1,58 +1,57 @@
 module SyntaxHighlight.Language.Xml
     exposing
-        ( parse
-          -- Exposing just for tests purpose
-        , toSyntax
-          -- Exposing just for tests purpose
-        , SyntaxType(..)
+        ( toLines
+        , Syntax(..)
+        , syntaxToStyle
+          -- Exposing for tests purpose
+        , toRevTokens
         )
 
 import Char
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
-import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
-import SyntaxHighlight.Line.Helpers exposing (toLines, normal)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
+import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
+import SyntaxHighlight.Language.Type as T
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
+import SyntaxHighlight.Line exposing (Line)
+import SyntaxHighlight.Line.Helpers as Line
+import SyntaxHighlight.Style as Style exposing (Required(..))
 
 
-type alias Syntax =
-    ( SyntaxType, String )
+type alias Token =
+    T.Token Syntax
 
 
-type SyntaxType
-    = Normal
-    | Comment
-    | Tag
+type Syntax
+    = Tag
     | Attribute
     | AttributeValue
-    | LineBreak
 
 
-parse : String -> Result Error (List Line)
-parse =
-    toSyntax
-        >> Result.map (toLines LineBreak toFragment)
+toLines : String -> Result Error (List Line)
+toLines =
+    toRevTokens
+        >> Result.map (Line.toLines syntaxToStyle)
 
 
-toSyntax : String -> Result Error (List Syntax)
-toSyntax =
+toRevTokens : String -> Result Error (List Token)
+toRevTokens =
     mainLoop
         |> repeat zeroOrMore
         |> map (List.reverse >> List.concat)
         |> Parser.run
 
 
-mainLoop : Parser (List Syntax)
+mainLoop : Parser (List Token)
 mainLoop =
     oneOf
         [ whitespace |> map List.singleton
         , comment
         , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         , openTag
         ]
 
 
-openTag : Parser (List Syntax)
+openTag : Parser (List Token)
 openTag =
     (ignore oneOrMore ((==) '<')
         |. oneOf
@@ -61,27 +60,27 @@ openTag =
             ]
     )
         |> source
-        |> map ((,) Normal >> List.singleton)
+        |> map ((,) T.Normal >> List.singleton)
         |> andThen tag
 
 
-tag : List Syntax -> Parser (List Syntax)
-tag revSyntaxes =
+tag : List Token -> Parser (List Token)
+tag revTokens =
     oneOf
         [ ignore (Exactly 1) isStartTagChar
             |> thenIgnore zeroOrMore isTagChar
             |> source
-            |> map ((,) Tag)
+            |> map ((,) (T.C Tag))
             |> andThen
                 (\n ->
                     repeat zeroOrMore attributeLoop
                         |> map
-                            ((::) (n :: revSyntaxes)
+                            ((::) (n :: revTokens)
                                 >> List.reverse
                                 >> List.concat
                             )
                 )
-        , succeed revSyntaxes
+        , succeed revTokens
         ]
 
 
@@ -95,15 +94,15 @@ isTagChar c =
     isStartTagChar c || c == '-'
 
 
-attributeLoop : Parser (List Syntax)
+attributeLoop : Parser (List Token)
 attributeLoop =
     oneOf
         [ keep oneOrMore isAttributeChar
-            |> map ((,) Attribute)
+            |> map ((,) (T.C Attribute))
             |> consThen attributeConfirm []
         , whitespace |> map List.singleton
         , keep oneOrMore (\c -> not (isWhitespace c) && c /= '>')
-            |> map ((,) Normal >> List.singleton)
+            |> map ((,) T.Normal >> List.singleton)
         ]
 
 
@@ -112,26 +111,26 @@ isAttributeChar c =
     isTagChar c || c == '_'
 
 
-attributeConfirm : List Syntax -> Parser (List Syntax)
-attributeConfirm revSyntaxes =
+attributeConfirm : List Token -> Parser (List Token)
+attributeConfirm revTokens =
     oneOf
         [ whitespace
-            |> consThen attributeConfirm revSyntaxes
+            |> consThen attributeConfirm revTokens
         , keep (Exactly 1) ((==) '=')
-            |> map ((,) Normal)
-            |> consThen attributeValueLoop revSyntaxes
-        , succeed revSyntaxes
+            |> map ((,) T.Normal)
+            |> consThen attributeValueLoop revTokens
+        , succeed revTokens
         ]
 
 
-attributeValueLoop : List Syntax -> Parser (List Syntax)
-attributeValueLoop revSyntaxes =
+attributeValueLoop : List Token -> Parser (List Token)
+attributeValueLoop revTokens =
     oneOf
         [ whitespace
-            |> consThen attributeValueLoop revSyntaxes
+            |> consThen attributeValueLoop revTokens
         , attributeValue
-            |> addThen succeed revSyntaxes
-        , succeed revSyntaxes
+            |> addThen succeed revTokens
+        , succeed revTokens
         ]
 
 
@@ -139,34 +138,34 @@ attributeValueLoop revSyntaxes =
 -- Attribute Value
 
 
-attributeValue : Parser (List Syntax)
+attributeValue : Parser (List Token)
 attributeValue =
     oneOf
         [ doubleQuote
         , quote
         , ignore oneOrMore (\c -> not (isWhitespace c) && c /= '>')
             |> source
-            |> map ((,) AttributeValue >> List.singleton)
+            |> map ((,) (T.C AttributeValue) >> List.singleton)
         ]
 
 
-doubleQuote : Parser (List Syntax)
+doubleQuote : Parser (List Token)
 doubleQuote =
     delimited doubleQuoteDelimiter
 
 
-doubleQuoteDelimiter : Delimiter Syntax
+doubleQuoteDelimiter : Delimiter Token
 doubleQuoteDelimiter =
     { start = "\""
     , end = "\""
     , isNestable = False
-    , defaultMap = ((,) AttributeValue)
+    , defaultMap = ((,) (T.C AttributeValue))
     , innerParsers = [ lineBreakList ]
     , isNotRelevant = not << isLineBreak
     }
 
 
-quote : Parser (List Syntax)
+quote : Parser (List Token)
 quote =
     delimited
         { doubleQuoteDelimiter
@@ -179,13 +178,13 @@ quote =
 -- Comment
 
 
-comment : Parser (List Syntax)
+comment : Parser (List Token)
 comment =
     delimited
         { doubleQuoteDelimiter
             | start = "<!--"
             , end = "-->"
-            , defaultMap = ((,) Comment)
+            , defaultMap = ((,) T.Comment)
         }
 
 
@@ -193,43 +192,34 @@ comment =
 -- Helpers
 
 
-whitespace : Parser Syntax
+whitespace : Parser Token
 whitespace =
     oneOf
         [ keep oneOrMore isSpace
-            |> map ((,) Normal)
+            |> map ((,) T.Normal)
         , lineBreak
         ]
 
 
-lineBreak : Parser Syntax
+lineBreak : Parser Token
 lineBreak =
     keep (Exactly 1) isLineBreak
-        |> map ((,) LineBreak)
+        |> map ((,) T.LineBreak)
 
 
-lineBreakList : Parser (List Syntax)
+lineBreakList : Parser (List Token)
 lineBreakList =
     repeat oneOrMore lineBreak
 
 
-toFragment : Syntax -> Fragment
-toFragment ( syntaxType, text ) =
-    case syntaxType of
-        Normal ->
-            normal Default text
-
-        Comment ->
-            normal Color1 text
-
+syntaxToStyle : Syntax -> ( Style.Required, String )
+syntaxToStyle syntax =
+    case syntax of
         Tag ->
-            normal Color3 text
+            ( Style3, "xml-t" )
 
         Attribute ->
-            normal Color5 text
+            ( Style5, "xml-a" )
 
         AttributeValue ->
-            normal Color2 text
-
-        LineBreak ->
-            normal Default text
+            ( Style2, "xlm-av" )

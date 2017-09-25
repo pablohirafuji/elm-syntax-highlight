@@ -1,8 +1,12 @@
-module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml)
+module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml)
 
 import Html exposing (Html, text, span, br, code, div, pre)
 import Html.Attributes exposing (class, classList, attribute)
 import SyntaxHighlight.Line exposing (..)
+import SyntaxHighlight.Style exposing (Required(..))
+
+
+-- Html
 
 
 toBlockHtml : Maybe Int -> List Line -> Html msg
@@ -31,7 +35,7 @@ lineView start index { fragments, highlight } =
             ]
         , attribute "data-elmsh-lc" (toString (start + index))
         ]
-        (List.map elementView fragments)
+        (List.map fragmentView fragments)
 
 
 toInlineHtml : List Line -> Html msg
@@ -40,7 +44,7 @@ toInlineHtml lines =
         |> List.map
             (\{ highlight, fragments } ->
                 if highlight == Nothing then
-                    List.map elementView fragments
+                    List.map fragmentView fragments
                 else
                     [ span
                         [ classList
@@ -49,52 +53,148 @@ toInlineHtml lines =
                             , ( "elmsh-del", highlight == Just Delete )
                             ]
                         ]
-                        (List.map elementView fragments)
+                        (List.map fragmentView fragments)
                     ]
             )
         |> List.concat
         |> code [ class "elmsh" ]
 
 
-elementView : Fragment -> Html msg
-elementView { text, color, isEmphasis, isStrong } =
-    if color == Default && not isEmphasis && not isStrong then
+fragmentView : Fragment -> Html msg
+fragmentView { text, requiredStyle, additionalClass } =
+    if requiredStyle == Default && String.isEmpty additionalClass then
         Html.text text
     else
         span
             [ classList
-                [ ( colorToString color, color /= Default )
-                , ( "elmsh-emphasis", isEmphasis )
-                , ( "elmsh-strong", isStrong )
+                [ ( requiredStyleToString requiredStyle
+                  , requiredStyle /= Default
+                  )
+                , ( "elmsh-" ++ additionalClass
+                  , additionalClass /= ""
+                  )
                 ]
             ]
             [ Html.text text ]
 
 
-colorToString : Color -> String
-colorToString color =
+requiredStyleToString : Required -> String
+requiredStyleToString required =
     (++) "elmsh" <|
-        case color of
+        case required of
             Default ->
                 "0"
 
-            Color1 ->
+            Style1 ->
                 "1"
 
-            Color2 ->
+            Style2 ->
                 "2"
 
-            Color3 ->
+            Style3 ->
                 "3"
 
-            Color4 ->
+            Style4 ->
                 "4"
 
-            Color5 ->
+            Style5 ->
                 "5"
 
-            Color6 ->
+            Style6 ->
                 "6"
 
-            Color7 ->
+            Style7 ->
                 "7"
+
+
+
+-- Static Html
+
+
+toStaticBlockHtml : Maybe Int -> List Line -> String
+toStaticBlockHtml maybeStart lines =
+    case maybeStart of
+        Nothing ->
+            "<pre class=\"elmsh\">"
+                ++ toStaticInlineHtml lines
+                ++ "</pre>"
+
+        Just start ->
+            String.concat
+                [ "<pre class=\"elmsh\"><code>"
+                , List.indexedMap (staticLineView start) lines
+                    |> String.concat
+                , "</code></pre>"
+                ]
+
+
+staticLineView : Int -> Int -> Line -> String
+staticLineView start index { fragments, highlight } =
+    String.concat
+        [ "<div class=\""
+        , "elmsh-line "
+        , emptyIfFalse (highlight == Just Normal) "elmsh-hl "
+        , emptyIfFalse (highlight == Just Add) "elmsh-add "
+        , emptyIfFalse (highlight == Just Delete) "elmsh-del "
+        , "\" data-elmsh-lc=\""
+        , toString (start + index)
+        , "\">"
+        , List.map staticFragmentView fragments |> String.concat
+        , "</div>"
+        ]
+
+
+toStaticInlineHtml : List Line -> String
+toStaticInlineHtml lines =
+    String.concat
+        [ "<code class=\"elmsh\">"
+        , List.map
+            (\{ highlight, fragments } ->
+                if highlight == Nothing then
+                    List.map staticFragmentView fragments
+                else
+                    [ "<span class=\""
+                    , emptyIfFalse (highlight == Just Normal)
+                        "elmsh-hl "
+                    , emptyIfFalse (highlight == Just Add)
+                        "elmsh-add "
+                    , emptyIfFalse (highlight == Just Delete)
+                        "elmsh-del "
+                    , List.map staticFragmentView fragments
+                        |> String.concat
+                    , "</span>"
+                    ]
+            )
+            lines
+            |> List.concat
+            |> String.concat
+        , "</code>"
+        ]
+
+
+staticFragmentView : Fragment -> String
+staticFragmentView { text, requiredStyle, additionalClass } =
+    if requiredStyle == Default && String.isEmpty additionalClass then
+        text
+    else
+        String.concat
+            [ "<span class=\""
+            , emptyIfFalse
+                (requiredStyle /= Default)
+                (requiredStyleToString requiredStyle)
+            , " "
+            , emptyIfFalse
+                (additionalClass /= "")
+                ("elmsh-" ++ additionalClass)
+            , "\">"
+            , text
+            , "</span>"
+            ]
+
+
+emptyIfFalse : Bool -> String -> String
+emptyIfFalse bool str =
+    if bool then
+        str
+    else
+        ""

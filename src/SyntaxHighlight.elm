@@ -2,6 +2,8 @@ module SyntaxHighlight
     exposing
         ( toBlockHtml
         , toInlineHtml
+        , toStaticBlockHtml
+        , toStaticInlineHtml
         , elm
         , xml
         , javascript
@@ -9,13 +11,13 @@ module SyntaxHighlight
         , Theme
         , useTheme
         , monokai
-        , github
+        , gitHub
         , oneDark
         )
 
 {-| Syntax highlighting in Elm.
 
-@docs toBlockHtml, toInlineHtml
+@docs toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
 
 
 ## Languages
@@ -27,7 +29,7 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 
 ## Themes
 
-@docs Theme, useTheme, monokai, github, oneDark
+@docs Theme, useTheme, monokai, gitHub, oneDark
 
 -}
 
@@ -42,9 +44,8 @@ import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Theme as Theme
 
 
-{-| Transform a list of lines into a Html block. The `Maybe Int`
-argument is for showing or not line count and, if so, starting
-from what number.
+{-| Transform a list of lines into a Html block.
+The `Maybe Int` argument is for showing or not line count and, if so, starting from what number.
 -}
 toBlockHtml : Maybe Int -> List Line -> Html msg
 toBlockHtml =
@@ -52,38 +53,66 @@ toBlockHtml =
 
 
 {-| Transform a list of lines into inline Html.
+
+    import SyntaxHighlight exposing (elm, toInlineHtml)
+
+    info : Html msg
+    info =
+        p []
+            [ text "This function signature "
+            , elm "isEmpty : String -> Bool"
+                |> Result.map toInlineHtml
+                |> Result.withDefault
+                    (code [] [ text "isEmpty : String -> Bool" ])
+            , text " means that a String argument is taken, then a Bool is returned."
+            ]
+
 -}
 toInlineHtml : List Line -> Html msg
 toInlineHtml =
     View.toInlineHtml
 
 
+{-| Transform a list of lines into a static (pure text) Html block. The `Maybe Int` argument is for showing or not line count and, if so, starting from what number.
+-}
+toStaticBlockHtml : Maybe Int -> List Line -> String
+toStaticBlockHtml =
+    View.toStaticBlockHtml
+
+
+{-| Transform a list of lines into static (pure text) inline Html.
+-}
+toStaticInlineHtml : List Line -> String
+toStaticInlineHtml =
+    View.toStaticInlineHtml
+
+
 {-| Parse Elm syntax.
 -}
 elm : String -> Result Parser.Error (List Line)
 elm =
-    Elm.parse
+    Elm.toLines
 
 
 {-| Parse XML syntax.
 -}
 xml : String -> Result Parser.Error (List Line)
 xml =
-    Xml.parse
+    Xml.toLines
 
 
 {-| Parse Javascript syntax.
 -}
 javascript : String -> Result Parser.Error (List Line)
 javascript =
-    Javascript.parse
+    Javascript.toLines
 
 
 {-| Parse CSS syntax.
 -}
 css : String -> Result Parser.Error (List Line)
 css =
-    Css.parse
+    Css.toLines
 
 
 {-| A theme defines the background and syntax colors.
@@ -101,6 +130,18 @@ If you prefer to use CSS external stylesheet, you do **not** need this,
 just copy the theme CSS into your stylesheet.
 All themes can be found [here](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md).
 
+    import SyntaxHighlight exposing (useTheme, monokai, elm, toBlockHtml)
+
+    view : Model -> Html msg
+    view model =
+        div []
+            [ useTheme monokai
+            , elm model.elmCode
+                |> Result.map (toBlockHtml (Just 1))
+                |> Result.withDefault
+                    (pre [] [ code [] [ text model.elmCode ] ])
+            ]
+
 -}
 useTheme : Theme -> Html msg
 useTheme (Theme theme) =
@@ -116,9 +157,9 @@ monokai =
 
 {-| GitHub inspired theme.
 -}
-github : Theme
-github =
-    Theme Theme.github
+gitHub : Theme
+gitHub =
+    Theme Theme.gitHub
 
 
 {-| Atom One Dark inspired theme.

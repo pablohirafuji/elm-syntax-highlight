@@ -32,12 +32,3 @@ view model =
 
 ## [Changelog](https://github.com/pablohirafuji/elm-syntax-highlight/releases)
 
-
-## Running demo
-
-```shell
-cd demo
-elm-reactor
-```
-
-Demo will be available at http://localhost:8000/index.html

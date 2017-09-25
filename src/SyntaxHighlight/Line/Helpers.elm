@@ -1,87 +1,82 @@
 module SyntaxHighlight.Line.Helpers
     exposing
         ( toLines
-        , normal
-        , emphasis
-        , strong
-        , strongEmphasis
         )
 
-import SyntaxHighlight.Line exposing (Line, Fragment, Color(Default))
+import SyntaxHighlight.Line exposing (Line, Fragment)
+import SyntaxHighlight.Style as Style exposing (Required(..))
+import SyntaxHighlight.Language.Type exposing (Token, Syntax(..))
 
 
-toLines : a -> (( a, String ) -> Fragment) -> List ( a, String ) -> List Line
-toLines lineBreak toFragment revSyntaxes =
-    List.foldl (toLinesHelp lineBreak toFragment) ( [], [], Nothing ) revSyntaxes
+toLines : (a -> ( Required, String )) -> List (Token a) -> List Line
+toLines toStyle revTokens =
+    List.foldl (toLinesHelp toStyle) ( [], [], Nothing ) revTokens
         |> (\( lines, frags, _ ) -> newLine frags :: lines)
 
 
-toLinesHelp : a -> (( a, String ) -> Fragment) -> ( a, String ) -> ( List Line, List Fragment, Maybe a ) -> ( List Line, List Fragment, Maybe a )
-toLinesHelp lineBreak toFragment ( syntaxType, text ) ( lines, fragments, maybeLastType ) =
-    if syntaxType == lineBreak then
+toLinesHelp : (a -> ( Required, String )) -> Token a -> ( List Line, List Fragment, Maybe (Syntax a) ) -> ( List Line, List Fragment, Maybe (Syntax a) )
+toLinesHelp toStyle ( syntax, text ) ( lines, fragments, maybeLastSyntax ) =
+    if syntax == LineBreak then
         ( newLine fragments :: lines
-        , [ normal Default text ]
+        , [ toFragment toStyle ( syntax, text ) ]
         , Nothing
         )
-    else if Just syntaxType == maybeLastType then
+    else if Just syntax == maybeLastSyntax then
         -- Concat same syntax sequence to reduce html elements.
         case fragments of
             headFrag :: tailFrags ->
                 ( lines
-                , { headFrag | text = text ++ headFrag.text } :: tailFrags
-                , maybeLastType
+                , { headFrag | text = text ++ headFrag.text }
+                    :: tailFrags
+                , maybeLastSyntax
                 )
 
             _ ->
                 ( lines
-                , toFragment ( syntaxType, text ) :: fragments
-                , maybeLastType
+                , toFragment toStyle ( syntax, text ) :: fragments
+                , maybeLastSyntax
                 )
     else
         ( lines
-        , toFragment ( syntaxType, text ) :: fragments
-        , Just syntaxType
+        , toFragment toStyle ( syntax, text ) :: fragments
+        , Just syntax
         )
+
+
+toFragment : (a -> ( Required, String )) -> Token a -> Fragment
+toFragment toStyle ( syntax, text ) =
+    case syntax of
+        Normal ->
+            { text = text
+            , requiredStyle = Default
+            , additionalClass = ""
+            }
+
+        Comment ->
+            { text = text
+            , requiredStyle = Default
+            , additionalClass = "comm"
+            }
+
+        LineBreak ->
+            { text = text
+            , requiredStyle = Default
+            , additionalClass = ""
+            }
+
+        C c ->
+            let
+                ( requiredStyle, additionalClass ) =
+                    toStyle c
+            in
+                { text = text
+                , requiredStyle = requiredStyle
+                , additionalClass = additionalClass
+                }
 
 
 newLine : List Fragment -> Line
 newLine fragments =
     { fragments = fragments
     , highlight = Nothing
-    }
-
-
-normal : Color -> String -> Fragment
-normal color text =
-    { text = text
-    , color = color
-    , isEmphasis = False
-    , isStrong = False
-    }
-
-
-emphasis : Color -> String -> Fragment
-emphasis color text =
-    { text = text
-    , color = color
-    , isEmphasis = True
-    , isStrong = False
-    }
-
-
-strong : Color -> String -> Fragment
-strong color text =
-    { text = text
-    , color = color
-    , isEmphasis = False
-    , isStrong = True
-    }
-
-
-strongEmphasis : Color -> String -> Fragment
-strongEmphasis color text =
-    { text = text
-    , color = color
-    , isEmphasis = True
-    , isStrong = True
     }

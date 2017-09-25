@@ -1,9 +1,11 @@
 module Language.Css exposing (suite)
 
 import Result exposing (Result(..))
-import Expect exposing (Expectation, equal)
+import Expect exposing (Expectation, equal, onFail)
+import Fuzz exposing (string)
 import Test exposing (..)
 import Parser
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
 import SyntaxHighlight.Language.Css as Css exposing (..)
 
 
@@ -12,49 +14,55 @@ suite =
     describe "Css Language Test Suite"
         [ test "Namespace at-rule" <|
             \() ->
-                Css.toSyntax namespaceStr
+                Css.toRevTokens namespaceStr
                     |> Result.map List.reverse
                     |> equal namespaceResult
         , test "Import at-rule" <|
             \() ->
-                Css.toSyntax importStr
+                Css.toRevTokens importStr
                     |> Result.map List.reverse
                     |> equal importResult
         , test "Media Query at-rule" <|
             \() ->
-                Css.toSyntax mediaQueryStr
+                Css.toRevTokens mediaQueryStr
                     |> Result.map List.reverse
                     |> equal mediaQueryResult
         , test "Font Face at-rule" <|
             \() ->
-                Css.toSyntax fontFaceStr
+                Css.toRevTokens fontFaceStr
                     |> Result.map List.reverse
                     |> equal fontFaceResult
         , test "Keyframes at-rule" <|
             \() ->
-                Css.toSyntax keyframesStr
+                Css.toRevTokens keyframesStr
                     |> Result.map List.reverse
                     |> equal keyframesResult
         , test "Counter Style at-rule" <|
             \() ->
-                Css.toSyntax counterStyleStr
+                Css.toRevTokens counterStyleStr
                     |> Result.map List.reverse
                     |> equal counterStyleResult
         , test "Page at-rule" <|
             \() ->
-                Css.toSyntax pageStr
+                Css.toRevTokens pageStr
                     |> Result.map List.reverse
                     |> equal pageResult
         , test "Font Feature Values at-rule" <|
             \() ->
-                Css.toSyntax fontFeatureValuesStr
+                Css.toRevTokens fontFeatureValuesStr
                     |> Result.map List.reverse
                     |> equal fontFeatureValuesResult
         , test "Charset at-rule" <|
             \() ->
-                Css.toSyntax charSetStr
+                Css.toRevTokens charSetStr
                     |> Result.map List.reverse
                     |> equal charSetResult
+        , fuzz string "The result should always be Ok" <|
+            \fuzzStr ->
+                Css.toRevTokens fuzzStr
+                    |> Result.map (always [])
+                    |> equal (Ok [])
+                    |> onFail ("Resulting error string: \"" ++ fuzzStr ++ "\"")
         ]
 
 
@@ -70,9 +78,9 @@ namespaceStr =
 @namespace svg "http://www.w3.org/2000/svg";"""
 
 
-namespaceResult : Result Parser.Error (List ( SyntaxType, String ))
+namespaceResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 namespaceResult =
-    Ok [ ( AtRule Identifier, "@namespace" ), ( Normal, " " ), ( AtRule Prefix, "prefix" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "XML-namespace-URL" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@namespace" ), ( Normal, " " ), ( AtRule Prefix, "prefix" ), ( Normal, " " ), ( String, "\"" ), ( String, "XML-namespace-URL" ), ( String, "\"" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@namespace" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "http://www.w3.org/1999/xhtml" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@namespace" ), ( Normal, " " ), ( AtRule Prefix, "svg" ), ( Normal, " " ), ( String, "\"" ), ( String, "http://www.w3.org/2000/svg" ), ( String, "\"" ), ( Normal, ";" ) ]
+    Ok [ ( C (AtRule Identifier), "@namespace" ), ( Normal, " " ), ( C (AtRule Prefix), "prefix" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "XML-namespace-URL" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@namespace" ), ( Normal, " " ), ( C (AtRule Prefix), "prefix" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "XML-namespace-URL" ), ( C String, "\"" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@namespace" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "http://www.w3.org/1999/xhtml" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@namespace" ), ( Normal, " " ), ( C (AtRule Prefix), "svg" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "http://www.w3.org/2000/svg" ), ( C String, "\"" ), ( Normal, ";" ) ]
 
 
 importStr : String
@@ -85,9 +93,9 @@ importStr =
 @import url('landscape.css') screen and (orientation:landscape);"""
 
 
-importResult : Result Parser.Error (List ( SyntaxType, String ))
+importResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 importResult =
-    Ok [ ( AtRule Identifier, "@import" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "\"" ), ( String, "fineprint.css" ), ( String, "\"" ), ( Normal, ")" ), ( Normal, " " ), ( AtRule AtRuleValue, "print" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@import" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "\"" ), ( String, "bluish.css" ), ( String, "\"" ), ( Normal, ")" ), ( Normal, " " ), ( AtRule AtRuleValue, "projection" ), ( Normal, "," ), ( Normal, " " ), ( AtRule AtRuleValue, "tv" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@import" ), ( Normal, " " ), ( String, "'" ), ( String, "custom.css" ), ( String, "'" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@import" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "\"" ), ( String, "chrome://communicator/skin/" ), ( String, "\"" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@import" ), ( Normal, " " ), ( String, "\"" ), ( String, "common.css" ), ( String, "\"" ), ( Normal, " " ), ( AtRule AtRuleValue, "screen" ), ( Normal, "," ), ( Normal, " " ), ( AtRule AtRuleValue, "projection" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@import" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "'" ), ( String, "landscape.css" ), ( String, "'" ), ( Normal, ")" ), ( Normal, " " ), ( AtRule AtRuleValue, "screen" ), ( Normal, " " ), ( AtRule Keyword, "and" ), ( Normal, " " ), ( Normal, "(" ), ( AtRule AtRuleValue, "orientation" ), ( Normal, ":" ), ( AtRule AtRuleValue, "landscape" ), ( Normal, ")" ), ( Normal, ";" ) ]
+    Ok [ ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "\"" ), ( C String, "fineprint.css" ), ( C String, "\"" ), ( Normal, ")" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "print" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "\"" ), ( C String, "bluish.css" ), ( C String, "\"" ), ( Normal, ")" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "projection" ), ( Normal, "," ), ( Normal, " " ), ( C (AtRule AtRuleValue), "tv" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C String, "'" ), ( C String, "custom.css" ), ( C String, "'" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "\"" ), ( C String, "chrome://communicator/skin/" ), ( C String, "\"" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "common.css" ), ( C String, "\"" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "screen" ), ( Normal, "," ), ( Normal, " " ), ( C (AtRule AtRuleValue), "projection" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@import" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "'" ), ( C String, "landscape.css" ), ( C String, "'" ), ( Normal, ")" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "screen" ), ( Normal, " " ), ( C (AtRule Keyword), "and" ), ( Normal, " " ), ( Normal, "(" ), ( C (AtRule AtRuleValue), "orientation" ), ( Normal, ":" ), ( C (AtRule AtRuleValue), "landscape" ), ( Normal, ")" ), ( Normal, ";" ) ]
 
 
 mediaQueryStr : String
@@ -107,9 +115,9 @@ mediaQueryStr =
 }"""
 
 
-mediaQueryResult : Result Parser.Error (List ( SyntaxType, String ))
+mediaQueryResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 mediaQueryResult =
-    Ok [ ( AtRule Identifier, "@media" ), ( Normal, " " ), ( AtRule AtRuleValue, "screen" ), ( Normal, " " ), ( AtRule Keyword, "and" ), ( Normal, " " ), ( Normal, "(" ), ( AtRule AtRuleValue, "min-width" ), ( Normal, ":" ), ( Normal, " " ), ( AtRule AtRuleValue, "900px" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Selector Element, "article" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Property, "padding" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "1" ), ( Unit, "rem" ), ( Normal, " " ), ( Number, "3" ), ( Unit, "rem" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@supports" ), ( Normal, " " ), ( Normal, "(" ), ( AtRule AtRuleValue, "display" ), ( Normal, ":" ), ( Normal, " " ), ( AtRule AtRuleValue, "flex" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( AtRule Identifier, "@media" ), ( Normal, " " ), ( AtRule AtRuleValue, "screen" ), ( Normal, " " ), ( AtRule Keyword, "and" ), ( Normal, " " ), ( Normal, "(" ), ( AtRule AtRuleValue, "min-width" ), ( Normal, ":" ), ( Normal, " " ), ( AtRule AtRuleValue, "900px" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Selector Element, "article" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "      " ), ( Property, "display" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "flex" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
+    Ok [ ( C (AtRule Identifier), "@media" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "screen" ), ( Normal, " " ), ( C (AtRule Keyword), "and" ), ( Normal, " " ), ( Normal, "(" ), ( C (AtRule AtRuleValue), "min-width" ), ( Normal, ":" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "900px" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (Selector Element), "article" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( C Property, "padding" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "1" ), ( C Unit, "rem" ), ( Normal, " " ), ( C Number, "3" ), ( C Unit, "rem" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@supports" ), ( Normal, " " ), ( Normal, "(" ), ( C (AtRule AtRuleValue), "display" ), ( Normal, ":" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "flex" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (AtRule Identifier), "@media" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "screen" ), ( Normal, " " ), ( C (AtRule Keyword), "and" ), ( Normal, " " ), ( Normal, "(" ), ( C (AtRule AtRuleValue), "min-width" ), ( Normal, ":" ), ( Normal, " " ), ( C (AtRule AtRuleValue), "900px" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( C (Selector Element), "article" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "      " ), ( C Property, "display" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "flex" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
 
 
 fontFaceStr : String
@@ -124,9 +132,9 @@ fontFaceStr =
 """
 
 
-fontFaceResult : Result Parser.Error (List ( SyntaxType, String ))
+fontFaceResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 fontFaceResult =
-    Ok [ ( AtRule Identifier, "@font-face" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "font-family" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "MyHelvetica" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "src" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "local" ), ( Normal, "(" ), ( String, "\"" ), ( String, "Helvetica Neue Bold" ), ( String, "\"" ), ( Normal, ")," ), ( LineBreak, "\n" ), ( Normal, "       " ), ( PropertyValue, "local" ), ( Normal, "(" ), ( String, "\"" ), ( String, "HelveticaNeue-Bold" ), ( String, "\"" ), ( Normal, ")," ), ( LineBreak, "\n" ), ( Normal, "       " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "MgOpenModernaBold.ttf" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "font-weight" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "bold" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
+    Ok [ ( C (AtRule Identifier), "@font-face" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "font-family" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "MyHelvetica" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "src" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "local" ), ( Normal, "(" ), ( C String, "\"" ), ( C String, "Helvetica Neue Bold" ), ( C String, "\"" ), ( Normal, ")," ), ( LineBreak, "\n" ), ( Normal, "       " ), ( C PropertyValue, "local" ), ( Normal, "(" ), ( C String, "\"" ), ( C String, "HelveticaNeue-Bold" ), ( C String, "\"" ), ( Normal, ")," ), ( LineBreak, "\n" ), ( Normal, "       " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "MgOpenModernaBold.ttf" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "font-weight" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "bold" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
 
 
 keyframesStr : String
@@ -139,9 +147,9 @@ keyframesStr =
 }"""
 
 
-keyframesResult : Result Parser.Error (List ( SyntaxType, String ))
+keyframesResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 keyframesResult =
-    Ok [ ( AtRule Identifier, "@keyframes" ), ( Normal, " " ), ( AtRule Prefix, "identifier" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Selector Element, "0%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "0" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Selector Element, "50%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "30" ), ( Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( Property, "left" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "20" ), ( Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Selector Element, "50%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "10" ), ( Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Selector Element, "100%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "0" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
+    Ok [ ( C (AtRule Identifier), "@keyframes" ), ( Normal, " " ), ( C (AtRule Prefix), "identifier" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (Selector Element), "0%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( C Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "0" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (Selector Element), "50%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( C Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "30" ), ( C Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( C Property, "left" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "20" ), ( C Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (Selector Element), "50%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( C Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "10" ), ( C Unit, "px" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (Selector Element), "100%" ), ( Normal, " " ), ( Normal, "{" ), ( Normal, " " ), ( C Property, "top" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "0" ), ( Normal, ";" ), ( Normal, " " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
 
 
 counterStyleStr : String
@@ -154,9 +162,9 @@ counterStyleStr =
 """
 
 
-counterStyleResult : Result Parser.Error (List ( SyntaxType, String ))
+counterStyleResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 counterStyleResult =
-    Ok [ ( AtRule Identifier, "@counter-style" ), ( Normal, " " ), ( AtRule Prefix, "winners-list" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "system" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "fixed" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "symbols" ), ( Normal, ":" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "gold-medal.svg" ), ( Normal, ")" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "silver-medal.svg" ), ( Normal, ")" ), ( Normal, " " ), ( PropertyValue, "url" ), ( Normal, "(" ), ( String, "bronze-medal.svg" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "suffix" ), ( Normal, ":" ), ( Normal, " " ), ( String, "\"" ), ( String, " " ), ( String, "\"" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
+    Ok [ ( C (AtRule Identifier), "@counter-style" ), ( Normal, " " ), ( C (AtRule Prefix), "winners-list" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "system" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "fixed" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "symbols" ), ( Normal, ":" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "gold-medal.svg" ), ( Normal, ")" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "silver-medal.svg" ), ( Normal, ")" ), ( Normal, " " ), ( C PropertyValue, "url" ), ( Normal, "(" ), ( C String, "bronze-medal.svg" ), ( Normal, ")" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "suffix" ), ( Normal, ":" ), ( Normal, " " ), ( C String, "\"" ), ( C String, " " ), ( C String, "\"" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
 
 
 pageStr : String
@@ -170,9 +178,9 @@ pageStr =
 }"""
 
 
-pageResult : Result Parser.Error (List ( SyntaxType, String ))
+pageResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 pageResult =
-    Ok [ ( AtRule Identifier, "@page" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "margin" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "1" ), ( Unit, "cm" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@page" ), ( Normal, " " ), ( Selector PseudoClass, ":first" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Property, "margin" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "2" ), ( Unit, "cm" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
+    Ok [ ( C (AtRule Identifier), "@page" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "margin" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "1" ), ( C Unit, "cm" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@page" ), ( Normal, " " ), ( C (Selector PseudoClass), ":first" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Property, "margin" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "2" ), ( C Unit, "cm" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
 
 
 fontFeatureValuesStr : String
@@ -191,9 +199,9 @@ fontFeatureValuesStr =
 """
 
 
-fontFeatureValuesResult : Result Parser.Error (List ( SyntaxType, String ))
+fontFeatureValuesResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 fontFeatureValuesResult =
-    Ok [ ( AtRule Identifier, "@font-feature-values" ), ( Normal, " " ), ( AtRule Prefix, "Font" ), ( Normal, " " ), ( AtRule Prefix, "One" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( AtRule Identifier, "@styleset" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Property, "nice-style" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "12" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@font-feature-values" ), ( Normal, " " ), ( AtRule Prefix, "Font" ), ( Normal, " " ), ( AtRule Prefix, "Two" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( AtRule Identifier, "@styleset" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Property, "nice-style" ), ( Normal, ":" ), ( Normal, " " ), ( Number, "4" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
+    Ok [ ( C (AtRule Identifier), "@font-feature-values" ), ( Normal, " " ), ( C (AtRule Prefix), "Font" ), ( Normal, " " ), ( C (AtRule Prefix), "One" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (AtRule Identifier), "@styleset" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( C Property, "nice-style" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "12" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@font-feature-values" ), ( Normal, " " ), ( C (AtRule Prefix), "Font" ), ( Normal, " " ), ( C (AtRule Prefix), "Two" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C (AtRule Identifier), "@styleset" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( C Property, "nice-style" ), ( Normal, ":" ), ( Normal, " " ), ( C Number, "4" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ), ( LineBreak, "\n" ) ]
 
 
 charSetStr : String
@@ -206,6 +214,6 @@ charSetStr =
 """
 
 
-charSetResult : Result Parser.Error (List ( SyntaxType, String ))
+charSetResult : Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
 charSetResult =
-    Ok [ ( AtRule Identifier, "@charset" ), ( Normal, " " ), ( String, "\"" ), ( String, "UTF-8" ), ( String, "\"" ), ( Normal, ";" ), ( Normal, "       " ), ( Comment, "/*" ), ( Comment, " Set the encoding of the style sheet to Unicode UTF-8 " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@charset" ), ( Normal, " " ), ( String, "'" ), ( String, "iso-8859-15" ), ( String, "'" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Invalid, wrong quoting style used " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@charset" ), ( Normal, "  " ), ( String, "\"" ), ( String, "UTF-8" ), ( String, "\"" ), ( Normal, ";" ), ( Normal, "      " ), ( Comment, "/*" ), ( Comment, " Invalid, more than one space " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Normal, " " ), ( AtRule Identifier, "@charset" ), ( Normal, " " ), ( String, "\"" ), ( String, "UTF-8" ), ( String, "\"" ), ( Normal, ";" ), ( Normal, "      " ), ( Comment, "/*" ), ( Comment, " Invalid, there is a character (a space) before the at-rule " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( AtRule Identifier, "@charset" ), ( Normal, " " ), ( String, "UTF-8" ), ( Normal, ";" ), ( Normal, "         " ), ( Comment, "/*" ), ( Comment, " Invalid, without ' or \", the charset is not a CSS <string> " ), ( Comment, "*/" ), ( LineBreak, "\n" ) ]
+    Ok [ ( C (AtRule Identifier), "@charset" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "UTF-8" ), ( C String, "\"" ), ( Normal, ";" ), ( Normal, "       " ), ( Comment, "/*" ), ( Comment, " Set the encoding of the style sheet to Unicode UTF-8 " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@charset" ), ( Normal, " " ), ( C String, "'" ), ( C String, "iso-8859-15" ), ( C String, "'" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Invalid, wrong quoting style used " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@charset" ), ( Normal, "  " ), ( C String, "\"" ), ( C String, "UTF-8" ), ( C String, "\"" ), ( Normal, ";" ), ( Normal, "      " ), ( Comment, "/*" ), ( Comment, " Invalid, more than one space " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Normal, " " ), ( C (AtRule Identifier), "@charset" ), ( Normal, " " ), ( C String, "\"" ), ( C String, "UTF-8" ), ( C String, "\"" ), ( Normal, ";" ), ( Normal, "      " ), ( Comment, "/*" ), ( Comment, " Invalid, there is a character (a space) before the at-rule " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C (AtRule Identifier), "@charset" ), ( Normal, " " ), ( C String, "UTF-8" ), ( Normal, ";" ), ( Normal, "         " ), ( Comment, "/*" ), ( Comment, " Invalid, without ' or \", the charset is not a CSS <string> " ), ( Comment, "*/" ), ( LineBreak, "\n" ) ]

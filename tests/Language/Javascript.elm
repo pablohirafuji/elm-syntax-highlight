@@ -5,35 +5,42 @@ import Expect exposing (Expectation, equal, onFail)
 import Fuzz exposing (string)
 import Test exposing (..)
 import Parser
-import SyntaxHighlight.Language.Javascript as Javascript exposing (..)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import SyntaxHighlight.Language.Javascript as JS exposing (Syntax(..), toRevTokens)
 
 
 suite : Test
 suite =
     describe "Javascript Language Test Suite"
-        [ equalTest "Function* declaration" "function* anotherGenerator(i) {\n  yield i + 1;\n  yield i + 2;\n  yield i + 3;\n}" <|
-            Ok [ ( DeclarationKeyword, "function" ), ( Keyword, "*" ), ( Normal, " " ), ( Function, "anotherGenerator" ), ( Normal, "(" ), ( Param, "i" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( Keyword, "+" ), ( Normal, " " ), ( LiteralKeyword, "1" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( Keyword, "+" ), ( Normal, " " ), ( LiteralKeyword, "2" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( Keyword, "+" ), ( Normal, " " ), ( LiteralKeyword, "3" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
-        , equalTest "Class declaration" "class Pessoa extends Humano {\n  constructor(nome, peso, altura) {\n   super(peso, altura);\n   this.nome = nome;\n  }\n}" <|
-            Ok [ ( DeclarationKeyword, "class" ), ( Normal, " " ), ( Function, "Pessoa" ), ( Normal, " " ), ( Keyword, "extends" ), ( Normal, " " ), ( ClassExtends, "Humano" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Function, "constructor" ), ( Normal, "(" ), ( Param, "nome" ), ( Normal, "," ), ( Normal, " " ), ( Param, "peso" ), ( Normal, "," ), ( Normal, " " ), ( Param, "altura" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "   " ), ( Param, "super" ), ( Normal, "(" ), ( Normal, "peso" ), ( Normal, "," ), ( Normal, " " ), ( Normal, "altura" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "   " ), ( Param, "this" ), ( Keyword, "." ), ( Normal, "nome" ), ( Normal, " " ), ( Keyword, "=" ), ( Normal, " " ), ( Normal, "nome" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
-        , equalTest "Function" "function resolveAfter2Seconds(x) {\n  return new Promise(resolve => {\n    setTimeout(() => {\n      resolve(x);\n    }, 2000);\n  });\n};" <|
-            Ok [ ( DeclarationKeyword, "function" ), ( Normal, " " ), ( Function, "resolveAfter2Seconds" ), ( Normal, "(" ), ( Param, "x" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Keyword, "return" ), ( Normal, " " ), ( Keyword, "new" ), ( Normal, " " ), ( FunctionEval, "Promise" ), ( Normal, "(" ), ( Normal, "resolve" ), ( Normal, " " ), ( Keyword, "=>" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( FunctionEval, "setTimeout" ), ( Normal, "(" ), ( Normal, "()" ), ( Normal, " " ), ( Keyword, "=>" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "      " ), ( FunctionEval, "resolve" ), ( Normal, "(" ), ( Normal, "x" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Normal, "}," ), ( Normal, " " ), ( LiteralKeyword, "2000" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "});" ), ( LineBreak, "\n" ), ( Normal, "};" ) ]
+        [ equalTest "Function* declaration"
+            "function* anotherGenerator(i) {\n  yield i + 1;\n  yield i + 2;\n  yield i + 3;\n}"
+          <|
+            Ok [ ( C DeclarationKeyword, "function" ), ( C Keyword, "*" ), ( Normal, " " ), ( C Function, "anotherGenerator" ), ( Normal, "(" ), ( C Param, "i" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( C Keyword, "+" ), ( Normal, " " ), ( C Number, "1" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( C Keyword, "+" ), ( Normal, " " ), ( C Number, "2" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Keyword, "yield" ), ( Normal, " " ), ( Normal, "i" ), ( Normal, " " ), ( C Keyword, "+" ), ( Normal, " " ), ( C Number, "3" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
+        , equalTest "Class declaration"
+            "class Pessoa extends Humano {\n  constructor(nome, peso, altura) {\n   super(peso, altura);\n   this.nome = nome;\n  }\n}"
+          <|
+            Ok [ ( C DeclarationKeyword, "class" ), ( Normal, " " ), ( C Function, "Pessoa" ), ( Normal, " " ), ( C Keyword, "extends" ), ( Normal, " " ), ( C ClassExtends, "Humano" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Function, "constructor" ), ( Normal, "(" ), ( C Param, "nome" ), ( Normal, "," ), ( Normal, " " ), ( C Param, "peso" ), ( Normal, "," ), ( Normal, " " ), ( C Param, "altura" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "   " ), ( C Param, "super" ), ( Normal, "(" ), ( Normal, "peso" ), ( Normal, "," ), ( Normal, " " ), ( Normal, "altura" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "   " ), ( C Param, "this" ), ( C Keyword, "." ), ( Normal, "nome" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "nome" ), ( Normal, ";" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "}" ), ( LineBreak, "\n" ), ( Normal, "}" ) ]
+        , equalTest "Function"
+            "function resolveAfter2Seconds(x) {\n  return new Promise(resolve => {\n    setTimeout(() => {\n      resolve(x);\n    }, 2000);\n  });\n};"
+          <|
+            Ok [ ( C DeclarationKeyword, "function" ), ( Normal, " " ), ( C Function, "resolveAfter2Seconds" ), ( Normal, "(" ), ( C Param, "x" ), ( Normal, ")" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( C Keyword, "return" ), ( Normal, " " ), ( C Keyword, "new" ), ( Normal, " " ), ( C FunctionEval, "Promise" ), ( Normal, "(" ), ( Normal, "resolve" ), ( Normal, " " ), ( C Keyword, "=>" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( C FunctionEval, "setTimeout" ), ( Normal, "(" ), ( Normal, "()" ), ( Normal, " " ), ( C Keyword, "=>" ), ( Normal, " " ), ( Normal, "{" ), ( LineBreak, "\n" ), ( Normal, "      " ), ( C FunctionEval, "resolve" ), ( Normal, "(" ), ( Normal, "x" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "    " ), ( Normal, "}," ), ( Normal, " " ), ( C Number, "2000" ), ( Normal, ");" ), ( LineBreak, "\n" ), ( Normal, "  " ), ( Normal, "});" ), ( LineBreak, "\n" ), ( Normal, "};" ) ]
         , equalTest "Inline Comment" "// Comment\nvar = id; //Comment\n// Comment" <|
-            Ok [ ( Comment, "// Comment" ), ( LineBreak, "\n" ), ( DeclarationKeyword, "var" ), ( Normal, " " ), ( Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "//Comment" ), ( LineBreak, "\n" ), ( Comment, "// Comment" ) ]
+            Ok [ ( Comment, "// Comment" ), ( LineBreak, "\n" ), ( C DeclarationKeyword, "var" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "//Comment" ), ( LineBreak, "\n" ), ( Comment, "// Comment" ) ]
         , equalTest "Multiline Comment" "/* Comment */\nvar = id; /* Comment */\n/* Comment" <|
-            Ok [ ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( DeclarationKeyword, "var" ), ( Normal, " " ), ( Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Comment, "/*" ), ( Comment, " Comment" ) ]
+            Ok [ ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C DeclarationKeyword, "var" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Comment, "/*" ), ( Comment, " Comment" ) ]
         , fuzz string "The result should always be Ok" <|
             \fuzzStr ->
-                Javascript.toSyntax fuzzStr
+                JS.toRevTokens fuzzStr
                     |> Result.map (always [])
                     |> equal (Ok [])
                     |> onFail ("Resulting error string: \"" ++ fuzzStr ++ "\"")
         ]
 
 
-equalTest : String -> String -> Result Parser.Error (List ( SyntaxType, String )) -> Test
+equalTest : String -> String -> Result Parser.Error (List ( T.Syntax JS.Syntax, String )) -> Test
 equalTest testName testStr testResult =
     test testName <|
         \() ->
-            Javascript.toSyntax testStr
+            JS.toRevTokens testStr
                 |> Result.map List.reverse
                 |> equal testResult

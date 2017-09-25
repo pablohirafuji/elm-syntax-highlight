@@ -1,94 +1,95 @@
 module SyntaxHighlight.Language.Elm
     exposing
-        ( parse
-          -- Exposing just for tests purpose
-        , toSyntax
-          -- Exposing just for tests purpose
-        , SyntaxType(..)
+        ( toLines
+        , Syntax(..)
+        , syntaxToStyle
+          -- Exposing for tests purpose
+        , toRevTokens
         )
 
 import Char
 import Set exposing (Set)
 import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat, succeed)
-import SyntaxHighlight.Line exposing (Line, Fragment, Color(..))
-import SyntaxHighlight.Line.Helpers exposing (toLines, normal, emphasis, strong)
-import SyntaxHighlight.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
+import SyntaxHighlight.Language.Type as T
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
+import SyntaxHighlight.Line exposing (Line)
+import SyntaxHighlight.Line.Helpers as Line
+import SyntaxHighlight.Style as Style exposing (Required(..))
 
 
-type alias Syntax =
-    ( SyntaxType, String )
+type alias Token =
+    T.Token Syntax
 
 
-type SyntaxType
-    = Normal
-    | Comment
-    | String
+type Syntax
+    = String
     | BasicSymbol
     | GroupSymbol
     | Capitalized
     | Keyword
     | Function
     | TypeSignature
-    | Space
-    | LineBreak
     | Number
 
 
-parse : String -> Result Error (List Line)
-parse =
-    toSyntax
-        >> Result.map (toLines LineBreak toFragment)
+toLines : String -> Result Error (List Line)
+toLines =
+    toRevTokens
+        >> Result.map (Line.toLines syntaxToStyle)
 
 
-toSyntax : String -> Result Error (List Syntax)
-toSyntax =
+toRevTokens : String -> Result Error (List Token)
+toRevTokens =
     lineStart []
         |> repeat zeroOrMore
         |> map (List.reverse >> List.concat)
         |> Parser.run
 
 
-lineStart : List Syntax -> Parser (List Syntax)
-lineStart revSyntaxes =
+lineStart : List Token -> Parser (List Token)
+lineStart revTokens =
     oneOf
-        [ whitespaceOrComment succeed revSyntaxes
-        , variable |> andThen (lineStartVariable revSyntaxes)
-        , stringLiteral |> addThen functionBody revSyntaxes
-        , functionBodyContent |> consThen functionBody revSyntaxes
+        [ whitespaceOrComment succeed revTokens
+        , variable |> andThen (lineStartVariable revTokens)
+        , stringLiteral |> addThen functionBody revTokens
+        , functionBodyContent |> consThen functionBody revTokens
         ]
 
 
-lineStartVariable : List Syntax -> String -> Parser (List Syntax)
-lineStartVariable revSyntaxes n =
+lineStartVariable : List Token -> String -> Parser (List Token)
+lineStartVariable revTokens n =
     if n == "module" || n == "import" then
-        moduleDeclaration (( Keyword, n ) :: revSyntaxes)
+        moduleDeclaration (( T.C Keyword, n ) :: revTokens)
     else if n == "port" then
-        portDeclaration (( Keyword, n ) :: revSyntaxes)
+        portDeclaration (( T.C Keyword, n ) :: revTokens)
     else if isKeyword n then
-        functionBody (( Keyword, n ) :: revSyntaxes)
+        functionBody (( T.C Keyword, n ) :: revTokens)
     else
-        functionSignature (( Function, n ) :: revSyntaxes)
+        functionSignature (( T.C Function, n ) :: revTokens)
 
 
 
 -- Module Declaration
 
 
-moduleDeclaration : List Syntax -> Parser (List Syntax)
-moduleDeclaration revSyntaxes =
+moduleDeclaration : List Token -> Parser (List Token)
+moduleDeclaration revTokens =
     oneOf
-        [ whitespaceOrComment moduleDeclaration revSyntaxes
+        [ whitespaceOrComment moduleDeclaration revTokens
         , symbol "("
-            |> map (always ( Normal, "(" ))
-            |> consThen modDecParentheses revSyntaxes
+            |> map (always ( T.Normal, "(" ))
+            |> consThen modDecParentheses revTokens
         , oneOf
-            [ commentChar |> map ((,) Normal)
-            , keyword "exposing" |> map (always ( Keyword, "exposing" ))
-            , keyword "as" |> map (always ( Keyword, "as" ))
-            , keep oneOrMore modDecIsNotRelevant |> map ((,) Normal)
+            [ commentChar |> map ((,) T.Normal)
+            , keyword "exposing"
+                |> map (always ( T.C Keyword, "exposing" ))
+            , keyword "as"
+                |> map (always ( T.C Keyword, "as" ))
+            , keep oneOrMore modDecIsNotRelevant
+                |> map ((,) T.Normal)
             ]
-            |> consThen moduleDeclaration revSyntaxes
-        , succeed revSyntaxes
+            |> consThen moduleDeclaration revTokens
+        , succeed revTokens
         ]
 
 
@@ -97,28 +98,30 @@ modDecIsNotRelevant c =
     not (isWhitespace c || isCommentChar c || c == '(')
 
 
-modDecParentheses : List Syntax -> Parser (List Syntax)
-modDecParentheses revSyntaxes =
+modDecParentheses : List Token -> Parser (List Token)
+modDecParentheses revTokens =
     oneOf
-        [ whitespaceOrComment modDecParentheses revSyntaxes
+        [ whitespaceOrComment modDecParentheses revTokens
         , symbol ")"
-            |> map (always ( Normal, ")" ))
-            |> consThen moduleDeclaration revSyntaxes
+            |> map (always ( T.Normal, ")" ))
+            |> consThen moduleDeclaration revTokens
         , oneOf
             [ infixParser
-            , commentChar |> map ((,) Normal)
-            , keep oneOrMore (\c -> c == ',' || c == '.') |> map ((,) Normal)
+            , commentChar |> map ((,) T.Normal)
+            , keep oneOrMore (\c -> c == ',' || c == '.')
+                |> map ((,) T.Normal)
             , ignore (Exactly 1) Char.isUpper
                 |> thenIgnore zeroOrMore mdpIsNotRelevant
                 |> source
-                |> map ((,) TypeSignature)
-            , keep oneOrMore mdpIsNotRelevant |> map ((,) Function)
+                |> map ((,) (T.C TypeSignature))
+            , keep oneOrMore mdpIsNotRelevant
+                |> map ((,) (T.C Function))
             ]
-            |> consThen modDecParentheses revSyntaxes
+            |> consThen modDecParentheses revTokens
         , symbol "("
-            |> map (always ( Normal, "(" ))
-            |> consThen (modDecParNest 0) revSyntaxes
-        , succeed revSyntaxes
+            |> map (always ( T.Normal, "(" ))
+            |> consThen (modDecParNest 0) revTokens
+        , succeed revTokens
         ]
 
 
@@ -127,28 +130,29 @@ mdpIsNotRelevant c =
     not (isWhitespace c || isCommentChar c || c == '(' || c == ')' || c == ',' || c == '.')
 
 
-modDecParNest : Int -> List Syntax -> Parser (List Syntax)
-modDecParNest nestLevel revSyntaxes =
+modDecParNest : Int -> List Token -> Parser (List Token)
+modDecParNest nestLevel revTokens =
     oneOf
-        [ whitespaceOrComment (modDecParNest nestLevel) revSyntaxes
+        [ whitespaceOrComment (modDecParNest nestLevel) revTokens
         , symbol "("
-            |> map (always ( Normal, "(" ))
-            |> andThen (\n -> modDecParNest (nestLevel + 1) (n :: revSyntaxes))
+            |> map (always ( T.Normal, "(" ))
+            |> andThen (\n -> modDecParNest (nestLevel + 1) (n :: revTokens))
         , symbol ")"
-            |> map (always ( Normal, ")" ))
+            |> map (always ( T.Normal, ")" ))
             |> andThen
                 (\n ->
                     if nestLevel == 0 then
-                        modDecParentheses (n :: revSyntaxes)
+                        modDecParentheses (n :: revTokens)
                     else
-                        modDecParNest (nestLevel - 1) (n :: revSyntaxes)
+                        modDecParNest (nestLevel - 1) (n :: revTokens)
                 )
         , oneOf
-            [ commentChar |> map ((,) Normal)
-            , keep oneOrMore (not << mdpnIsSpecialChar) |> map ((,) Normal)
+            [ commentChar |> map ((,) T.Normal)
+            , keep oneOrMore (not << mdpnIsSpecialChar)
+                |> map ((,) T.Normal)
             ]
-            |> consThen (modDecParNest nestLevel) revSyntaxes
-        , succeed revSyntaxes
+            |> consThen (modDecParNest nestLevel) revTokens
+        , succeed revTokens
         ]
 
 
@@ -161,59 +165,59 @@ mdpnIsSpecialChar c =
 -- Port Declaration
 
 
-portDeclaration : List Syntax -> Parser (List Syntax)
-portDeclaration revSyntaxes =
+portDeclaration : List Token -> Parser (List Token)
+portDeclaration revTokens =
     oneOf
-        [ whitespaceOrComment portDeclaration revSyntaxes
-        , variable |> andThen (portDeclarationHelp revSyntaxes)
-        , functionBody revSyntaxes
+        [ whitespaceOrComment portDeclaration revTokens
+        , variable |> andThen (portDeclarationHelp revTokens)
+        , functionBody revTokens
         ]
 
 
-portDeclarationHelp : List Syntax -> String -> Parser (List Syntax)
-portDeclarationHelp revSyntaxes str =
+portDeclarationHelp : List Token -> String -> Parser (List Token)
+portDeclarationHelp revTokens str =
     if str == "module" then
-        moduleDeclaration (( Keyword, str ) :: revSyntaxes)
+        moduleDeclaration (( T.C Keyword, str ) :: revTokens)
     else
-        functionSignature (( Function, str ) :: revSyntaxes)
+        functionSignature (( T.C Function, str ) :: revTokens)
 
 
 
 -- Function Signature
 
 
-functionSignature : List Syntax -> Parser (List Syntax)
-functionSignature revSyntaxes =
+functionSignature : List Token -> Parser (List Token)
+functionSignature revTokens =
     oneOf
         [ symbol ":"
-            |> map (always ( BasicSymbol, ":" ))
-            |> consThen fnSigContent revSyntaxes
-        , whitespaceOrComment functionSignature revSyntaxes
-        , functionBody revSyntaxes
+            |> map (always ( T.C BasicSymbol, ":" ))
+            |> consThen fnSigContent revTokens
+        , whitespaceOrComment functionSignature revTokens
+        , functionBody revTokens
         ]
 
 
-fnSigContent : List Syntax -> Parser (List Syntax)
-fnSigContent revSyntaxes =
+fnSigContent : List Token -> Parser (List Token)
+fnSigContent revTokens =
     oneOf
-        [ whitespaceOrComment fnSigContent revSyntaxes
-        , fnSigContentHelp |> consThen fnSigContent revSyntaxes
-        , succeed revSyntaxes
+        [ whitespaceOrComment fnSigContent revTokens
+        , fnSigContentHelp |> consThen fnSigContent revTokens
+        , succeed revTokens
         ]
 
 
-fnSigContentHelp : Parser Syntax
+fnSigContentHelp : Parser Token
 fnSigContentHelp =
     oneOf
-        [ symbol "()" |> map (always ( TypeSignature, "()" ))
-        , symbol "->" |> map (always ( BasicSymbol, "->" ))
+        [ symbol "()" |> map (always ( T.C TypeSignature, "()" ))
+        , symbol "->" |> map (always ( T.C BasicSymbol, "->" ))
         , keep oneOrMore (\c -> c == '(' || c == ')' || c == '-' || c == ',')
-            |> map ((,) Normal)
+            |> map ((,) T.Normal)
         , ignore (Exactly 1) Char.isUpper
             |> thenIgnore zeroOrMore fnSigIsNotRelevant
             |> source
-            |> map ((,) TypeSignature)
-        , keep oneOrMore fnSigIsNotRelevant |> map ((,) Normal)
+            |> map ((,) (T.C TypeSignature))
+        , keep oneOrMore fnSigIsNotRelevant |> map ((,) T.Normal)
         ]
 
 
@@ -226,34 +230,34 @@ fnSigIsNotRelevant c =
 -- Function Body
 
 
-functionBody : List Syntax -> Parser (List Syntax)
-functionBody revSyntaxes =
+functionBody : List Token -> Parser (List Token)
+functionBody revTokens =
     oneOf
-        [ whitespaceOrComment functionBody revSyntaxes
-        , stringLiteral |> addThen functionBody revSyntaxes
-        , functionBodyContent |> consThen functionBody revSyntaxes
-        , succeed revSyntaxes
+        [ whitespaceOrComment functionBody revTokens
+        , stringLiteral |> addThen functionBody revTokens
+        , functionBodyContent |> consThen functionBody revTokens
+        , succeed revTokens
         ]
 
 
-functionBodyContent : Parser Syntax
+functionBodyContent : Parser Token
 functionBodyContent =
     oneOf
-        [ number |> source |> map ((,) Number)
-        , symbol "()" |> map (always ( Capitalized, "()" ))
+        [ number |> source |> map ((,) (T.C Number))
+        , symbol "()" |> map (always ( T.C Capitalized, "()" ))
         , infixParser
-        , basicSymbol |> map ((,) BasicSymbol)
-        , groupSymbol |> map ((,) GroupSymbol)
-        , capitalized |> map ((,) Capitalized)
+        , basicSymbol |> map ((,) (T.C BasicSymbol))
+        , groupSymbol |> map ((,) (T.C GroupSymbol))
+        , capitalized |> map ((,) (T.C Capitalized))
         , variable
             |> map
                 (\n ->
                     if isKeyword n then
-                        ( Keyword, n )
+                        ( T.C Keyword, n )
                     else
-                        ( Normal, n )
+                        ( T.Normal, n )
                 )
-        , weirdText |> map ((,) Normal)
+        , weirdText |> map ((,) T.Normal)
         ]
 
 
@@ -366,12 +370,12 @@ weirdText =
 -- Infix
 
 
-infixParser : Parser Syntax
+infixParser : Parser Token
 infixParser =
     delayedCommit (symbol "(")
         (delayedCommit (ignore oneOrMore isInfixChar) (symbol ")"))
         |> source
-        |> map ((,) Function)
+        |> map ((,) (T.C Function))
 
 
 isInfixChar : Char -> Bool
@@ -409,7 +413,7 @@ infixSet =
 -- String/Char literals
 
 
-stringLiteral : Parser (List Syntax)
+stringLiteral : Parser (List Token)
 stringLiteral =
     oneOf
         [ tripleDoubleQuote
@@ -418,23 +422,23 @@ stringLiteral =
         ]
 
 
-doubleQuote : Parser (List Syntax)
+doubleQuote : Parser (List Token)
 doubleQuote =
     delimited stringDelimiter
 
 
-stringDelimiter : Delimiter Syntax
+stringDelimiter : Delimiter Token
 stringDelimiter =
     { start = "\""
     , end = "\""
     , isNestable = False
-    , defaultMap = ((,) String)
+    , defaultMap = ((,) (T.C String))
     , innerParsers = [ lineBreakList, elmEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
 
 
-tripleDoubleQuote : Parser (List Syntax)
+tripleDoubleQuote : Parser (List Token)
 tripleDoubleQuote =
     delimited
         { stringDelimiter
@@ -443,7 +447,7 @@ tripleDoubleQuote =
         }
 
 
-quote : Parser (List Syntax)
+quote : Parser (List Token)
 quote =
     delimited
         { stringDelimiter
@@ -461,7 +465,7 @@ isStringLiteralChar c =
 -- Comments
 
 
-comment : Parser (List Syntax)
+comment : Parser (List Token)
 comment =
     oneOf
         [ inlineComment
@@ -469,21 +473,21 @@ comment =
         ]
 
 
-inlineComment : Parser (List Syntax)
+inlineComment : Parser (List Token)
 inlineComment =
     symbol "--"
         |> thenIgnore zeroOrMore (not << isLineBreak)
         |> source
-        |> map ((,) Comment >> List.singleton)
+        |> map ((,) T.Comment >> List.singleton)
 
 
-multilineComment : Parser (List Syntax)
+multilineComment : Parser (List Token)
 multilineComment =
     delimited
         { start = "{-"
         , end = "-}"
         , isNestable = True
-        , defaultMap = ((,) Comment)
+        , defaultMap = ((,) T.Comment)
         , innerParsers = [ lineBreakList ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
@@ -503,84 +507,72 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
-whitespaceOrComment continueFunction revSyntaxes =
+whitespaceOrComment : (List Token -> Parser (List Token)) -> List Token -> Parser (List Token)
+whitespaceOrComment continueFunction revTokens =
     oneOf
-        [ space |> consThen continueFunction revSyntaxes
+        [ space |> consThen continueFunction revTokens
         , lineBreak
-            |> consThen (checkContext continueFunction) revSyntaxes
-        , comment |> addThen continueFunction revSyntaxes
+            |> consThen (checkContext continueFunction) revTokens
+        , comment |> addThen continueFunction revTokens
         ]
 
 
-checkContext : (List Syntax -> Parser (List Syntax)) -> List Syntax -> Parser (List Syntax)
-checkContext continueFunction revSyntaxes =
+checkContext : (List Token -> Parser (List Token)) -> List Token -> Parser (List Token)
+checkContext continueFunction revTokens =
     oneOf
-        [ whitespaceOrComment continueFunction revSyntaxes
-        , succeed revSyntaxes
+        [ whitespaceOrComment continueFunction revTokens
+        , succeed revTokens
         ]
 
 
-space : Parser Syntax
+space : Parser Token
 space =
     keep oneOrMore isSpace
-        |> map ((,) Space)
+        |> map ((,) T.Normal)
 
 
-lineBreak : Parser Syntax
+lineBreak : Parser Token
 lineBreak =
     keep (Exactly 1) isLineBreak
-        |> map ((,) LineBreak)
+        |> map ((,) T.LineBreak)
 
 
-lineBreakList : Parser (List Syntax)
+lineBreakList : Parser (List Token)
 lineBreakList =
     repeat oneOrMore lineBreak
 
 
-elmEscapable : Parser (List Syntax)
+elmEscapable : Parser (List Token)
 elmEscapable =
     escapable
         |> source
-        |> map ((,) Capitalized)
+        |> map ((,) (T.C Capitalized))
         |> repeat oneOrMore
 
 
-toFragment : Syntax -> Fragment
-toFragment ( syntaxType, text ) =
-    case syntaxType of
-        Normal ->
-            normal Default text
-
-        Comment ->
-            normal Color1 text
-
+syntaxToStyle : Syntax -> ( Style.Required, String )
+syntaxToStyle syntax =
+    case syntax of
         String ->
-            normal Color2 text
+            ( Style2, "elm-s" )
 
         BasicSymbol ->
-            normal Color3 text
+            ( Style3, "elm-bs" )
 
         GroupSymbol ->
-            normal Color4 text
+            ( Style4, "elm-gs" )
 
         Capitalized ->
-            normal Color6 text
+            ( Style6, "elm-c" )
 
         Keyword ->
-            normal Color3 text
+            ( Style3, "elm-k" )
 
         Function ->
-            normal Color5 text
+            ( Style5, "elm-f" )
 
         TypeSignature ->
-            emphasis Color4 text
-
-        Space ->
-            normal Default text
-
-        LineBreak ->
-            normal Default text
+            ( Style4, "elm-ts" )
 
         Number ->
-            normal Color6 text
+            ( Style1, "elm-n" )
