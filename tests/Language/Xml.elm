@@ -24,19 +24,34 @@ suite =
             Ok [ ( Normal, "<" ), ( C Tag, "div" ), ( Normal, " " ), ( C Attribute, "class" ) ]
         , equalTest "Incomplete attribute 2" "<div class =" <|
             Ok [ ( Normal, "<" ), ( C Tag, "div" ), ( Normal, " " ), ( C Attribute, "class" ), ( Normal, " " ), ( Normal, "=" ) ]
-        , fuzz string "The result should always be Ok" <|
+        , fuzz string "Fuzz string" <|
             \fuzzStr ->
                 Xml.toRevTokens fuzzStr
-                    |> Result.map (always [])
-                    |> equal (Ok [])
+                    |> Result.map
+                        (List.reverse
+                            >> List.map Tuple.second
+                            >> String.concat
+                        )
+                    |> equal (Ok fuzzStr)
                     |> onFail ("Resulting error string: \"" ++ fuzzStr ++ "\"")
         ]
 
 
 equalTest : String -> String -> Result Parser.Error (List ( T.Syntax Xml.Syntax, String )) -> Test
 equalTest testName testStr testResult =
-    test testName <|
-        \() ->
-            Xml.toRevTokens testStr
-                |> Result.map List.reverse
-                |> equal testResult
+    describe testName
+        [ test "Syntax equality" <|
+            \() ->
+                Xml.toRevTokens testStr
+                    |> Result.map List.reverse
+                    |> equal testResult
+        , test "String equality" <|
+            \() ->
+                Xml.toRevTokens testStr
+                    |> Result.map
+                        (List.reverse
+                            >> List.map Tuple.second
+                            >> String.concat
+                        )
+                    |> equal (Ok testStr)
+        ]

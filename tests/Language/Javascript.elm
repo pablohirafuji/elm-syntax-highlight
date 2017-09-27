@@ -1,7 +1,7 @@
 module Language.Javascript exposing (suite)
 
 import Result exposing (Result(..))
-import Expect exposing (Expectation, equal, onFail)
+import Expect exposing (Expectation, equal, equalLists, onFail)
 import Fuzz exposing (string)
 import Test exposing (..)
 import Parser
@@ -28,19 +28,34 @@ suite =
             Ok [ ( Comment, "// Comment" ), ( LineBreak, "\n" ), ( C DeclarationKeyword, "var" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "//Comment" ), ( LineBreak, "\n" ), ( Comment, "// Comment" ) ]
         , equalTest "Multiline Comment" "/* Comment */\nvar = id; /* Comment */\n/* Comment" <|
             Ok [ ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C DeclarationKeyword, "var" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Comment, "/*" ), ( Comment, " Comment" ) ]
-        , fuzz string "The result should always be Ok" <|
+        , fuzz string "Fuzz string" <|
             \fuzzStr ->
                 JS.toRevTokens fuzzStr
-                    |> Result.map (always [])
-                    |> equal (Ok [])
+                    |> Result.map
+                        (List.reverse
+                            >> List.map Tuple.second
+                            >> String.concat
+                        )
+                    |> equal (Ok fuzzStr)
                     |> onFail ("Resulting error string: \"" ++ fuzzStr ++ "\"")
         ]
 
 
 equalTest : String -> String -> Result Parser.Error (List ( T.Syntax JS.Syntax, String )) -> Test
 equalTest testName testStr testResult =
-    test testName <|
-        \() ->
-            JS.toRevTokens testStr
-                |> Result.map List.reverse
-                |> equal testResult
+    describe testName
+        [ test "Syntax equality" <|
+            \() ->
+                JS.toRevTokens testStr
+                    |> Result.map List.reverse
+                    |> equal testResult
+        , test "String equality" <|
+            \() ->
+                JS.toRevTokens testStr
+                    |> Result.map
+                        (List.reverse
+                            >> List.map Tuple.second
+                            >> String.concat
+                        )
+                    |> equal (Ok testStr)
+        ]
