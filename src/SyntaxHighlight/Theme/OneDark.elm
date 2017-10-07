@@ -43,11 +43,11 @@ requiredStyles =
     , addition = backgroundColor (Rgba 40 124 82 0.4)
     , deletion = backgroundColor (Rgba 136 64 67 0.4)
     , comment = textColor (Hex "#5c6370") |> italic
-    , style1 = textColor (Hex "#c678dd")
+    , style1 = textColor (Hex "#d19a66")
     , style2 = textColor (Hex "#98c379")
     , style3 = textColor (Hex "#c678dd")
     , style4 = textColor (Hex "#c678dd")
     , style5 = textColor (Hex "#61aeee")
-    , style6 = textColor (Hex "#c678dd")
+    , style6 = textColor (Hex "#d19a66")
     , style7 = textColor (Hex "#abb2bf")
     }
