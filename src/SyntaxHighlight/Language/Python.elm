@@ -177,11 +177,11 @@ keywordSet =
 
 isPunctuation : Char -> Bool
 isPunctuation c =
-    Set.member c punctuactorSet
+    Set.member c punctuationSet
 
 
-punctuactorSet : Set Char
-punctuactorSet =
+punctuationSet : Set Char
+punctuationSet =
     Set.union operatorSet groupSet
 
 
