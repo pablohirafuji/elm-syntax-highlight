@@ -25,8 +25,7 @@ type Syntax
     | String
     | Keyword
     | DeclarationKeyword
-      -- TODO:
-      --| FunctionEval
+    | FunctionEval
     | Function
     | LiteralKeyword
     | Param
@@ -77,7 +76,7 @@ keywordParser n =
     else if isLiteralKeyword n then
         succeed [ ( T.C LiteralKeyword, n ) ]
     else
-        succeed [ ( T.Normal, n ) ]
+        functionEvalLoop n []
 
 
 functionDeclarationLoop : Parser (List Token)
@@ -104,6 +103,23 @@ argLoop =
             |> map ((,) (T.C Param) >> List.singleton)
         , keep oneOrMore (\c -> c == '/' || c == ',')
             |> map ((,) T.Normal >> List.singleton)
+        ]
+
+
+functionEvalLoop : String -> List Token -> Parser (List Token)
+functionEvalLoop identifier revTokens =
+    oneOf
+        [ whitespaceOrComment
+            |> addThen (functionEvalLoop identifier) revTokens
+        , symbol "("
+            |> andThen
+                (\n ->
+                    succeed
+                        ((( T.Normal, "(" ) :: revTokens)
+                            ++ [ ( T.C FunctionEval, identifier ) ]
+                        )
+                )
+        , succeed (revTokens ++ [ ( T.Normal, identifier ) ])
         ]
 
 
@@ -396,3 +412,6 @@ syntaxToStyle syntax =
 
         Param ->
             ( Style7, "py-p" )
+
+        FunctionEval ->
+            ( Default, "py-fe" )
