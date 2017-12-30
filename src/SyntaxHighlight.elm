@@ -11,6 +11,7 @@ module SyntaxHighlight
         , xml
         , javascript
         , css
+        , python
         , Theme
         , useTheme
         , monokai
@@ -61,6 +62,7 @@ import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Css as Css
+import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Theme as Theme
 
 
@@ -185,6 +187,14 @@ javascript =
 css : String -> Result Parser.Error HCode
 css =
     Css.toLines
+        >> Result.map HCode
+
+
+{-| Parse Python syntax.
+-}
+python : String -> Result Parser.Error HCode
+python =
+    Python.toLines
         >> Result.map HCode
 
 

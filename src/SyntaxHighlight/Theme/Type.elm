@@ -5,6 +5,7 @@ import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Xml as Xml
+import SyntaxHighlight.Language.Python as Python
 
 
 type alias Theme =
@@ -18,6 +19,7 @@ type Syntax
     | Xml Xml.Syntax
     | Javascript Javascript.Syntax
     | Css Css.Syntax
+    | Python Python.Syntax
 
 
 toCss : Theme -> String
@@ -64,4 +66,8 @@ syntaxToSelector syntax =
 
         Css cssSyntax ->
             Css.syntaxToStyle cssSyntax
+                |> Tuple.second
+
+        Python pythonSyntax ->
+            Python.syntaxToStyle pythonSyntax
                 |> Tuple.second

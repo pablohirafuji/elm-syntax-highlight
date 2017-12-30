@@ -73,6 +73,7 @@ initLanguagesModel =
         , ( "Xml", initLanguageModel xmlExample )
         , ( "Javascript", initLanguageModel javascriptExample )
         , ( "Css", initLanguageModel cssExample )
+        , ( "Python", initLanguageModel pythonExample )
         ]
 
 
@@ -172,6 +173,32 @@ stock > * {
 .metal {
   background: #c0c0c0 url(metal.png);
 }
+"""
+
+
+pythonExample : String
+pythonExample =
+    """ice_cream = 'chocolate'
+if ice_cream == 'chocolate':
+    print('Yay, I love chocolate ice cream!')
+else:
+    print('Awwww, but chocolate is my favorite...');
+
+# Multiply two numbers
+def multiply(a, b):
+    return a * b
+
+class Animal:
+    def __init__(self):
+        pass
+
+class Dog(Animal):
+    kind = 'canine'
+
+    def __init__(self, name):
+        self.name = name
+
+d = Dog('Fido')
 """
 
 
@@ -307,6 +334,7 @@ view model =
         , viewLanguage "Javascript" toHtmlJavascript model
         , viewLanguage "Xml" toHtmlXml model
         , viewLanguage "Css" toHtmlCss model
+        , viewLanguage "Python" toHtmlPython model
         , viewOptions model
         ]
 
@@ -415,6 +443,11 @@ toHtmlJavascript =
 toHtmlCss : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlCss =
     toHtml SH.css
+
+
+toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlPython =
+    toHtml SH.python
 
 
 toHtml : (String -> Result x SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
