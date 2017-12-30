@@ -1,10 +1,10 @@
 module SyntaxHighlight.Language.Python
     exposing
         ( toLines
-          --, Syntax(..)
-          --, syntaxToStyle
+        , Syntax(..)
+        , syntaxToStyle
           -- Exposing for tests purpose
-          --, toRevTokens
+        , toRevTokens
         )
 
 import Set exposing (Set)
@@ -14,6 +14,9 @@ import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpa
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
 import SyntaxHighlight.Style as Style exposing (Required(..))
+
+
+-- Author: brandly (https://github.com/brandly)
 
 
 type alias Token =
