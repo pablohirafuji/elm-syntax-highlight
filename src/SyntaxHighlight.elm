@@ -40,7 +40,7 @@ module SyntaxHighlight
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs elm, xml, javascript, css
+@docs css, elm, javascript, python, xml
 
 
 ## Themes
