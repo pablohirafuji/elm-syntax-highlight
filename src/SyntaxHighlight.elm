@@ -1,25 +1,11 @@
-module SyntaxHighlight
-    exposing
-        ( HCode
-        , toBlockHtml
-        , toInlineHtml
-        , toStaticBlockHtml
-        , toStaticInlineHtml
-        , ConsoleOptions
-        , toConsole
-        , elm
-        , xml
-        , javascript
-        , css
-        , python
-        , Theme
-        , useTheme
-        , monokai
-        , gitHub
-        , oneDark
-        , Highlight(..)
-        , highlightLines
-        )
+module SyntaxHighlight exposing
+    ( HCode
+    , toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
+    , Highlight(..), highlightLines
+    , css, elm, javascript, python, xml
+    , Theme, useTheme, monokai, gitHub, oneDark
+    , ConsoleOptions, toConsole
+    )
 
 {-| Syntax highlighting in Elm.
 
@@ -56,14 +42,14 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 
 import Html exposing (Html, text)
 import Parser
-import SyntaxHighlight.Line as Line exposing (Line, Highlight)
-import SyntaxHighlight.View as View
-import SyntaxHighlight.Language.Elm as Elm
-import SyntaxHighlight.Language.Xml as Xml
-import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Css as Css
+import SyntaxHighlight.Language.Elm as Elm
+import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Python as Python
+import SyntaxHighlight.Language.Xml as Xml
+import SyntaxHighlight.Line as Line exposing (Highlight, Line)
 import SyntaxHighlight.Theme as Theme
+import SyntaxHighlight.View as View
 
 
 {-| A highlighted code.
@@ -135,7 +121,7 @@ The common uses of the styles are the following:
   - **comment**: Comment
   - **style1**: Number
   - **style2**: Literal string, attribute value
-  - **style3**: Keyword, tag, operator symbols (=+-*/...)
+  - **style3**: Keyword, tag, operator symbols (=+-\*/...)
   - **style4**: Keyword 2, group symbols ({}(),), type signature
   - **style5**: Function, attribute name
   - **style6**: Literal keyword, capitalized types
@@ -160,7 +146,7 @@ type alias ConsoleOptions =
 
 {-| Parse Elm syntax.
 -}
-elm : String -> Result Parser.Error HCode
+elm : String -> Result (List Parser.DeadEnd) HCode
 elm =
     Elm.toLines
         >> Result.map HCode
@@ -168,7 +154,7 @@ elm =
 
 {-| Parse XML syntax.
 -}
-xml : String -> Result Parser.Error HCode
+xml : String -> Result (List Parser.DeadEnd) HCode
 xml =
     Xml.toLines
         >> Result.map HCode
@@ -176,7 +162,7 @@ xml =
 
 {-| Parse Javascript syntax.
 -}
-javascript : String -> Result Parser.Error HCode
+javascript : String -> Result (List Parser.DeadEnd) HCode
 javascript =
     Javascript.toLines
         >> Result.map HCode
@@ -184,7 +170,7 @@ javascript =
 
 {-| Parse CSS syntax.
 -}
-css : String -> Result Parser.Error HCode
+css : String -> Result (List Parser.DeadEnd) HCode
 css =
     Css.toLines
         >> Result.map HCode
@@ -192,7 +178,7 @@ css =
 
 {-| Parse Python syntax.
 -}
-python : String -> Result Parser.Error HCode
+python : String -> Result (List Parser.DeadEnd) HCode
 python =
     Python.toLines
         >> Result.map HCode
@@ -208,7 +194,7 @@ type Theme
 
 To preview the themes, check out the [demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
-    import SyntaxHighlight exposing (useTheme, monokai, elm, toBlockHtml)
+    import SyntaxHighlight exposing (elm, monokai, toBlockHtml, useTheme)
 
     view : Model -> Html msg
     view model =
@@ -269,7 +255,7 @@ type Highlight
 {-| Highlight lines given a highlight type, start and end index.
 If no highlight type is given (`Nothing`), it will remove any
 highlight from the line range.
-Negative indexes are taken starting from the *end* of the list.
+Negative indexes are taken starting from the _end_ of the list.
 -}
 highlightLines : Maybe Highlight -> Int -> Int -> HCode -> HCode
 highlightLines maybeHighlight start end (HCode lines) =
@@ -288,5 +274,5 @@ highlightLines maybeHighlight start end (HCode lines) =
                 Just Del ->
                     Just Line.Del
     in
-        Line.highlightLines maybeHighlight_ start end lines
-            |> HCode
+    Line.highlightLines maybeHighlight_ start end lines
+        |> HCode

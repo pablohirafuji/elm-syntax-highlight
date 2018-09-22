@@ -1,24 +1,24 @@
-module Main exposing (..)
+module Main exposing (main)
 
-import Time exposing (Time)
-import Html exposing (Html, div, text, p, textarea, pre, code, option, select, label, ul, li, input, button)
-import Html.Attributes exposing (defaultValue, id, class, value, spellcheck, selected, style, type_, placeholder, checked, classList)
+import Browser
+import Browser.Events exposing (onAnimationFrame)
 import Dict exposing (Dict)
+import Html exposing (Html, button, code, div, input, label, li, option, p, pre, select, text, textarea, ul)
+import Html.Attributes exposing (checked, class, classList, id, placeholder, selected, spellcheck, style, type_, value)
+import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
-import Html.Events exposing (onClick, onInput, onCheck)
 import Json.Decode as Json
 import SyntaxHighlight as SH
 import SyntaxHighlight.Theme as Theme
-import AnimationFrame
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
-        { init = ( initModel, Cmd.none )
+    Browser.element
+        { init = \_ -> ( initModel, Cmd.none )
         , view = view
         , update = update
-        , subscriptions = \_ -> AnimationFrame.times Frame
+        , subscriptions = \_ -> onAnimationFrame (\_ -> Frame)
         }
 
 
@@ -42,7 +42,7 @@ type alias Model =
 initModel : Model
 initModel =
     { scroll = Scroll 0 0
-    , currentLanguage = "Elm"
+    , currentLanguage = "Xml"
     , languagesModel = initLanguagesModel
     , showLineCount = True
     , lineCountStart = 1
@@ -210,7 +210,7 @@ type Msg
     = NoOp
     | SetText String String
     | OnScroll Scroll
-    | Frame Time
+    | Frame
     | SetLanguage String
     | ShowLineCount Bool
     | SetLineCountStart Int
@@ -232,18 +232,18 @@ update msg ({ highlight } as model) =
             getLangModel lang model
                 |> (\m -> { m | code = codeStr })
                 |> updateLangModel lang model
-                |> flip (,) Cmd.none
+                |> (\a -> ( a, Cmd.none ))
 
         OnScroll scroll ->
             ( { model | scroll = scroll }
             , Cmd.none
             )
 
-        Frame _ ->
+        Frame ->
             getLangModel model.currentLanguage model
                 |> (\m -> { m | scroll = model.scroll })
                 |> updateLangModel model.currentLanguage model
-                |> flip (,) Cmd.none
+                |> (\a -> ( a, Cmd.none ))
 
         SetLanguage lang ->
             getLangModel lang model
@@ -255,7 +255,7 @@ update msg ({ highlight } as model) =
                             , currentLanguage = lang
                         }
                    )
-                |> flip (,) Cmd.none
+                |> (\a -> ( a, Cmd.none ))
 
         ShowLineCount bool ->
             ( { model
@@ -263,6 +263,7 @@ update msg ({ highlight } as model) =
                 , lineCount =
                     if bool then
                         Just model.lineCountStart
+
                     else
                         Nothing
               }
@@ -306,7 +307,7 @@ update msg ({ highlight } as model) =
             getLangModel model.currentLanguage model
                 |> (\m -> { m | highlight = model.highlight })
                 |> updateLangModel model.currentLanguage model
-                |> flip (,) Cmd.none
+                |> (\a -> ( a, Cmd.none ))
 
 
 getLangModel : String -> Model -> LanguageModel
@@ -318,7 +319,7 @@ getLangModel lang model =
 updateLangModel : String -> Model -> LanguageModel -> Model
 updateLangModel lang model langModel =
     Dict.insert lang langModel model.languagesModel
-        |> \n -> { model | languagesModel = n }
+        |> (\n -> { model | languagesModel = n })
 
 
 
@@ -328,7 +329,8 @@ updateLangModel lang model langModel =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text (textareaStyle model) ]
+        [ Html.node "style" [] [ text bodyStyle ]
+        , Html.node "style" [] [ text (textareaStyle model) ]
         , Html.Lazy.lazy2 syntaxTheme model.theme model.customTheme
         , viewLanguage "Elm" toHtmlElm model
         , viewLanguage "Javascript" toHtmlJavascript model
@@ -348,17 +350,18 @@ textareaStyle { theme } =
                 , ".textarea::selection { background-color: " ++ b ++ "; }"
                 ]
     in
-        if List.member theme [ "Monokai", "One Dark", "Custom" ] then
-            style "#f8f8f2" "rgba(255,255,255,0.2)"
-        else
-            style "#24292e" "rgba(0,0,0,0.2)"
+    if List.member theme [ "Monokai", "One Dark", "Custom" ] then
+        style "#f8f8f2" "rgba(255,255,255,0.2)"
+
+    else
+        style "#24292e" "rgba(0,0,0,0.2)"
 
 
 syntaxTheme : String -> String -> Html msg
-syntaxTheme currentTheme customTheme =
+syntaxTheme currentTheme customTheme_ =
     Dict.fromList Theme.all
         |> Dict.get currentTheme
-        |> Maybe.withDefault customTheme
+        |> Maybe.withDefault customTheme_
         |> text
         |> List.singleton
         |> Html.node "style" []
@@ -368,43 +371,42 @@ viewLanguage : String -> (Maybe Int -> String -> HighlightModel -> Html Msg) -> 
 viewLanguage thisLang parser ({ currentLanguage, lineCount } as model) =
     if thisLang /= currentLanguage then
         div [] []
+
     else
         let
             langModel =
                 getLangModel thisLang model
         in
-            div
-                [ classList
-                    [ ( "container", True )
-                    , ( "elmsh", True )
-                    ]
+        div
+            [ classList
+                [ ( "container", True )
+                , ( "elmsh", True )
                 ]
-                [ div
-                    [ class "view-container"
-                    , style
-                        [ ( "transform"
-                          , "translate("
-                                ++ toString -langModel.scroll.left
-                                ++ "px, "
-                                ++ toString -langModel.scroll.top
-                                ++ "px)"
-                          )
-                        , ( "will-change", "transform" )
-                        ]
-                    ]
-                    [ Html.Lazy.lazy3 parser
-                        lineCount
-                        langModel.code
-                        langModel.highlight
-                    ]
-                , viewTextarea thisLang langModel.code model
+            ]
+            [ div
+                [ class "view-container"
+                , style "transform"
+                    ("translate("
+                        ++ String.fromInt -langModel.scroll.left
+                        ++ "px, "
+                        ++ String.fromInt -langModel.scroll.top
+                        ++ "px)"
+                    )
+                , style "will-change" "transform"
                 ]
+                [ Html.Lazy.lazy3 parser
+                    lineCount
+                    langModel.code
+                    langModel.highlight
+                ]
+            , viewTextarea thisLang langModel.code model
+            ]
 
 
 viewTextarea : String -> String -> Model -> Html Msg
 viewTextarea thisLang codeStr { showLineCount } =
     textarea
-        [ defaultValue codeStr
+        [ value codeStr
         , classList
             [ ( "textarea", True )
             , ( "textarea-lc", showLineCount )
@@ -455,7 +457,7 @@ toHtml parser maybeStart str hlModel =
     parser str
         |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
         |> Result.map (SH.toBlockHtml maybeStart)
-        |> Result.mapError (\x -> text (toString x))
+        |> Result.mapError (\x -> text (Debug.toString x))
         |> (\result ->
                 case result of
                     Result.Ok a ->
@@ -495,6 +497,7 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
                 ]
             , if showLineCount then
                 numberInput " - Start: " lineCountStart SetLineCountStart
+
               else
                 text ""
             ]
@@ -522,13 +525,14 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
                   <|
                     viewSelectOptions
                         model.theme
-                        ((List.map Tuple.first Theme.all)
+                        (List.map Tuple.first Theme.all
                             ++ [ "Custom" ]
                         )
                 ]
             ]
         , if theme == "Custom" then
             customTheme model
+
           else
             text ""
         , li []
@@ -541,10 +545,10 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
 customTheme : Model -> Html Msg
 customTheme model =
     textarea
-        [ defaultValue model.customTheme
+        [ value model.customTheme
         , onInput SetCustomColorScheme
         , spellcheck False
-        , style [ ( "width", "100%" ) ]
+        , style "width" "100%"
         , Html.Attributes.rows 10
         ]
         []
@@ -599,8 +603,101 @@ numberInput labelStr defaultVal msg =
             [ type_ "number"
             , Html.Attributes.min "-999"
             , Html.Attributes.max "999"
-            , onInput (String.toInt >> Result.withDefault 0 >> msg)
-            , defaultValue (toString defaultVal)
+            , onInput (String.toInt >> Maybe.withDefault 0 >> msg)
+            , value (String.fromInt defaultVal)
             ]
             []
         ]
+
+
+bodyStyle : String
+bodyStyle =
+    """body {
+    margin: 40px auto;
+    max-width: 650px;
+    line-height: 1.6;
+    font-size: 18px;
+    color: #444;
+    padding: 0 10px;
+    text-align: center;
+}
+h1,h2,h3 {
+    line-height: 1.2;
+}
+h1 {
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+.subheading {
+    margin-top: 0;
+}
+ul {
+    text-align: left;
+}
+.container {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+}
+.textarea, .view-container {
+    box-sizing: border-box;
+    font-size: 1rem;
+    line-height: 1.2;
+    width: 100%;
+    height: 100%;
+    height: 250px;
+    font-family: monospace;
+    letter-spacing: normal;
+    word-spacing: normal;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    white-space: pre;
+}
+.textarea {
+    color: rgba(0,0,0,0);
+    resize: none;
+    z-index: 2;
+    position: relative;
+    padding: 10px;
+}
+.textarea-lc {
+    padding-left: 70px;
+}
+.textarea:focus {
+    outline: none;
+}
+.view-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index:1;
+}
+
+/* Elm Syntax Highlight CSS */
+pre.elmsh {
+    padding: 10px;
+    margin: 0;
+    text-align: left;
+    overflow: auto;
+}
+code.elmsh {
+    padding: 0;
+}
+.elmsh-line:before {
+    content: attr(data-elmsh-lc);
+    display: inline-block;
+    text-align: right;
+    width: 40px;
+    padding: 0 20px 0 0;
+    opacity: 0.3;
+}
+
+/* Demo specifics */
+pre.elmsh {
+    overflow: visible;
+}"""

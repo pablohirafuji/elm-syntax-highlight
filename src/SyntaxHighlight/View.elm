@@ -1,9 +1,10 @@
-module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml, toConsole, ConsoleOptions)
+module SyntaxHighlight.View exposing (ConsoleOptions, toBlockHtml, toConsole, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml)
 
-import Html exposing (Html, text, span, br, code, div, pre)
-import Html.Attributes exposing (class, classList, attribute)
+import Html exposing (Html, br, code, div, pre, span, text)
+import Html.Attributes exposing (attribute, class, classList)
 import SyntaxHighlight.Line exposing (..)
 import SyntaxHighlight.Style exposing (Required(..))
+
 
 
 -- Html
@@ -33,7 +34,7 @@ lineView start index { fragments, highlight } =
             , ( "elmsh-add", highlight == Just Add )
             , ( "elmsh-del", highlight == Just Del )
             ]
-        , attribute "data-elmsh-lc" (toString (start + index))
+        , attribute "data-elmsh-lc" (String.fromInt (start + index))
         ]
         (List.map fragmentView fragments)
 
@@ -45,6 +46,7 @@ toInlineHtml lines =
             (\{ highlight, fragments } ->
                 if highlight == Nothing then
                     List.map fragmentView fragments
+
                 else
                     [ span
                         [ classList
@@ -64,6 +66,7 @@ fragmentView : Fragment -> Html msg
 fragmentView { text, requiredStyle, additionalClass } =
     if requiredStyle == Default && String.isEmpty additionalClass then
         Html.text text
+
     else
         span
             [ classList
@@ -140,7 +143,7 @@ staticLineView start index { fragments, highlight } =
         , emptyIfFalse (highlight == Just Add) "elmsh-add "
         , emptyIfFalse (highlight == Just Del) "elmsh-del "
         , "\" data-elmsh-lc=\""
-        , toString (start + index)
+        , String.fromInt (start + index)
         , "\">"
         , List.map staticFragmentView fragments |> String.concat
         , "</div>"
@@ -155,6 +158,7 @@ toStaticInlineHtml lines =
             (\{ highlight, fragments } ->
                 if highlight == Nothing then
                     List.map staticFragmentView fragments
+
                 else
                     [ "<span class=\""
                     , emptyIfFalse (highlight == Just Normal)
@@ -179,6 +183,7 @@ staticFragmentView : Fragment -> String
 staticFragmentView { text, requiredStyle, additionalClass } =
     if requiredStyle == Default && String.isEmpty additionalClass then
         text
+
     else
         String.concat
             [ "<span class=\""
@@ -199,6 +204,7 @@ emptyIfFalse : Bool -> String -> String
 emptyIfFalse bool str =
     if bool then
         str
+
     else
         ""
 
@@ -230,22 +236,24 @@ toConsole options lines =
             if highlight == Nothing then
                 List.map (consoleFragmentView options) fragments
                     |> String.concat
+
             else
                 List.map (consoleFragmentView options) fragments
                     |> String.concat
-                    |> \n ->
-                        case highlight of
-                            Nothing ->
-                                n
+                    |> (\n ->
+                            case highlight of
+                                Nothing ->
+                                    n
 
-                            Just Normal ->
-                                options.highlight n
+                                Just Normal ->
+                                    options.highlight n
 
-                            Just Add ->
-                                options.addition n
+                                Just Add ->
+                                    options.addition n
 
-                            Just Del ->
-                                options.deletion n
+                                Just Del ->
+                                    options.deletion n
+                       )
         )
         lines
 

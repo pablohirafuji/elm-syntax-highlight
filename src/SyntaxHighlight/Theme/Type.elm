@@ -1,11 +1,11 @@
-module SyntaxHighlight.Theme.Type exposing (..)
+module SyntaxHighlight.Theme.Type exposing (Syntax(..), Theme, syntaxToSelector, syntaxesToSelectors, toCss)
 
-import SyntaxHighlight.Style as Style exposing (Style, RequiredStyles)
-import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Css as Css
+import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as Javascript
-import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Language.Python as Python
+import SyntaxHighlight.Language.Xml as Xml
+import SyntaxHighlight.Style as Style exposing (RequiredStyles, Style)
 
 
 type alias Theme =

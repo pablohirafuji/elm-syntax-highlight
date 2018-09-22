@@ -1,9 +1,9 @@
 module SyntaxHighlight.Line
     exposing
-        ( Line
+        ( Fragment
         , Highlight(..)
+        , Line
         , highlightLines
-        , Fragment
         )
 
 {-| A parsed highlighted line.
@@ -52,21 +52,24 @@ highlightLines maybeHighlight start end lines =
         start_ =
             if start < 0 then
                 length + start
+
             else
                 start
 
         end_ =
             if end < 0 then
                 length + end
+
             else
                 end
     in
-        List.indexedMap (highlightLinesHelp maybeHighlight start_ end_) lines
+    List.indexedMap (highlightLinesHelp maybeHighlight start_ end_) lines
 
 
 highlightLinesHelp : Maybe Highlight -> Int -> Int -> Int -> Line -> Line
 highlightLinesHelp maybeHighlight start end index line =
     if index >= start && index < end then
         { line | highlight = maybeHighlight }
+
     else
         line

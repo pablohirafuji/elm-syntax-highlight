@@ -1,16 +1,16 @@
-module SyntaxHighlight.Language.Javascript
-    exposing
-        ( toLines
-        , Syntax(..)
-        , syntaxToStyle
-          -- Exposing for tests purpose
-        , toRevTokens
-        )
+module SyntaxHighlight.Language.Javascript exposing
+    ( Syntax(..)
+    ,  syntaxToStyle
+       -- Exposing for tests purpose
 
+    , toLines
+    , toRevTokens
+    )
+
+import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, escapable, isEscapable, isLineBreak, isSpace, isWhitespace, thenChompWhile)
 import SyntaxHighlight.Language.Type as T
-import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, escapable, isEscapable, addThen, consThen)
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
 import SyntaxHighlight.Style as Style exposing (Required(..))
@@ -32,131 +32,136 @@ type Syntax
     | ClassExtends
 
 
-toLines : String -> Result Error (List Line)
+toLines : String -> Result (List DeadEnd) (List Line)
 toLines =
-    toRevTokens
+    Parser.run toRevTokens
         >> Result.map (Line.toLines syntaxToStyle)
 
 
-toRevTokens : String -> Result Error (List Token)
+toRevTokens : Parser (List Token)
 toRevTokens =
-    mainLoop
-        |> repeat zeroOrMore
-        |> map (List.reverse >> List.concat)
-        |> Parser.run
+    loop [] mainLoop
 
 
-mainLoop : Parser (List Token)
-mainLoop =
+mainLoop : List Token -> Parser (Step (List Token) (List Token))
+mainLoop revTokens =
     oneOf
-        [ whitespaceOrComment
+        [ whitespaceOrCommentStep revTokens
         , stringLiteral
+            |> map (\s -> Loop (s ++ revTokens))
         , oneOf
             [ operatorChar
             , groupChar
             , number
             ]
-            |> map List.singleton
-        , keep oneOrMore isIdentifierNameChar
-            |> andThen keywordParser
+            |> map (\s -> Loop (s :: revTokens))
+        , chompIfThenWhile isIdentifierNameChar
+            |> getChompedString
+            |> andThen (keywordParser revTokens)
+            |> map Loop
+        , succeed (Done revTokens)
         ]
 
 
-keywordParser : String -> Parser (List Token)
-keywordParser n =
+keywordParser : List Token -> String -> Parser (List Token)
+keywordParser revTokens n =
     if n == "function" || n == "static" then
-        functionDeclarationLoop
-            |> repeat zeroOrMore
-            |> consThenRevConcat [ ( T.C DeclarationKeyword, n ) ]
+        loop (( T.C DeclarationKeyword, n ) :: revTokens) functionDeclarationLoop
+
     else if n == "class" then
-        classDeclarationLoop
-            |> repeat zeroOrMore
-            |> consThenRevConcat [ ( T.C DeclarationKeyword, n ) ]
+        loop (( T.C DeclarationKeyword, n ) :: revTokens) classDeclarationLoop
+
     else if n == "this" || n == "super" then
-        succeed [ ( T.C Param, n ) ]
+        succeed (( T.C Param, n ) :: revTokens)
+
     else if n == "constructor" then
-        functionDeclarationLoop
-            |> repeat zeroOrMore
-            |> consThenRevConcat [ ( T.C Function, n ) ]
+        loop (( T.C Function, n ) :: revTokens) functionDeclarationLoop
+
     else if isKeyword n then
-        succeed [ ( T.C Keyword, n ) ]
+        succeed (( T.C Keyword, n ) :: revTokens)
+
     else if isDeclarationKeyword n then
-        succeed [ ( T.C DeclarationKeyword, n ) ]
+        succeed (( T.C DeclarationKeyword, n ) :: revTokens)
+
     else if isLiteralKeyword n then
-        succeed [ ( T.C LiteralKeyword, n ) ]
+        succeed (( T.C LiteralKeyword, n ) :: revTokens)
+
     else
-        functionEvalLoop n []
+        loop [] (functionEvalLoop n revTokens)
 
 
-functionDeclarationLoop : Parser (List Token)
-functionDeclarationLoop =
+functionDeclarationLoop : List Token -> Parser (Step (List Token) (List Token))
+functionDeclarationLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore isIdentifierNameChar
-            |> map ((,) (T.C Function) >> List.singleton)
+        [ whitespaceOrCommentStep revTokens
+        , chompIfThenWhile isIdentifierNameChar
+            |> getChompedString
+            |> map (\b -> Loop (( T.C Function, b ) :: revTokens))
         , symbol "*"
-            |> map (\_ -> [ ( T.C Keyword, "*" ) ])
+            |> map (\_ -> Loop (( T.C Keyword, "*" ) :: revTokens))
         , symbol "("
             |> andThen
-                (\_ ->
-                    argLoop
-                        |> repeat zeroOrMore
-                        |> consThenRevConcat [ ( T.Normal, "(" ) ]
-                )
+                (\_ -> loop (( T.Normal, "(" ) :: revTokens) argLoop)
+            |> map Loop
+        , succeed (Done revTokens)
         ]
 
 
-argLoop : Parser (List Token)
-argLoop =
+argLoop : List Token -> Parser (Step (List Token) (List Token))
+argLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
-            |> map ((,) (T.C Param) >> List.singleton)
-        , keep oneOrMore (\c -> c == '/' || c == ',')
-            |> map ((,) T.Normal >> List.singleton)
+        [ whitespaceOrCommentStep revTokens
+        , chompIfThenWhile (\c -> not (isCommentChar c || isWhitespace c || c == ',' || c == ')'))
+            |> getChompedString
+            |> map (\b -> Loop (( T.C Param, b ) :: revTokens))
+        , chompIfThenWhile (\c -> c == '/' || c == ',')
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
-functionEvalLoop : String -> List Token -> Parser (List Token)
-functionEvalLoop identifier revTokens =
+functionEvalLoop : String -> List Token -> List Token -> Parser (Step (List Token) (List Token))
+functionEvalLoop identifier revTokens thisRevToken =
     oneOf
-        [ whitespaceOrComment
-            |> addThen (functionEvalLoop identifier) revTokens
+        [ whitespaceOrCommentStep thisRevToken
         , symbol "("
-            |> andThen
-                (\n ->
-                    succeed
-                        ((( T.Normal, "(" ) :: revTokens)
-                            ++ [ ( T.C FunctionEval, identifier ) ]
-                        )
-                )
-        , succeed (revTokens ++ [ ( T.Normal, identifier ) ])
+            |> map
+                (\_ -> Done ((( T.Normal, "(" ) :: thisRevToken) ++ (( T.C FunctionEval, identifier ) :: revTokens)))
+        , thisRevToken
+            ++ (( T.Normal, identifier ) :: revTokens)
+            |> Done
+            |> succeed
         ]
 
 
-classDeclarationLoop : Parser (List Token)
-classDeclarationLoop =
+classDeclarationLoop : List Token -> Parser (Step (List Token) (List Token))
+classDeclarationLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore isIdentifierNameChar
+        [ whitespaceOrCommentStep revTokens
+        , chompIfThenWhile isIdentifierNameChar
+            |> getChompedString
             |> andThen
                 (\n ->
                     if n == "extends" then
-                        classExtendsLoop
-                            |> repeat zeroOrMore
-                            |> consThenRevConcat [ ( T.C Keyword, n ) ]
+                        loop (( T.C Keyword, n ) :: revTokens) classExtendsLoop
+                            |> map Loop
+
                     else
-                        succeed [ ( T.C Function, n ) ]
+                        succeed (Loop (( T.C Function, n ) :: revTokens))
                 )
+        , succeed (Done revTokens)
         ]
 
 
-classExtendsLoop : Parser (List Token)
-classExtendsLoop =
+classExtendsLoop : List Token -> Parser (Step (List Token) (List Token))
+classExtendsLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore isIdentifierNameChar
-            |> map ((,) (T.C ClassExtends) >> List.singleton)
+        [ whitespaceOrCommentStep revTokens
+        , chompIfThenWhile isIdentifierNameChar
+            |> getChompedString
+            |> map (\b -> Loop (( T.C ClassExtends, b ) :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -246,8 +251,9 @@ punctuactorSet =
 
 operatorChar : Parser Token
 operatorChar =
-    keep oneOrMore isOperatorChar
-        |> map ((,) (T.C Keyword))
+    chompIfThenWhile isOperatorChar
+        |> getChompedString
+        |> map (\b -> ( T.C Keyword, b ))
 
 
 isOperatorChar : Char -> Bool
@@ -279,8 +285,9 @@ operatorSet =
 
 groupChar : Parser Token
 groupChar =
-    keep oneOrMore isGroupChar
-        |> map ((,) T.Normal)
+    chompIfThenWhile isGroupChar
+        |> getChompedString
+        |> map (\b -> ( T.Normal, b ))
 
 
 isGroupChar : Char -> Bool
@@ -342,7 +349,7 @@ quoteDelimiter =
     { start = "'"
     , end = "'"
     , isNestable = False
-    , defaultMap = ((,) (T.C String))
+    , defaultMap = \b -> ( T.C String, b )
     , innerParsers = [ lineBreakList, jsEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
@@ -388,9 +395,9 @@ comment =
 inlineComment : Parser (List Token)
 inlineComment =
     symbol "//"
-        |. ignore zeroOrMore (not << isLineBreak)
-        |> source
-        |> map ((,) T.Comment >> List.singleton)
+        |> thenChompWhile (not << isLineBreak)
+        |> getChompedString
+        |> map (\b -> [ ( T.Comment, b ) ])
 
 
 multilineComment : Parser (List Token)
@@ -399,7 +406,7 @@ multilineComment =
         { start = "/*"
         , end = "*/"
         , isNestable = False
-        , defaultMap = ((,) T.Comment)
+        , defaultMap = \b -> ( T.Comment, b )
         , innerParsers = [ lineBreakList ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
@@ -414,41 +421,37 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : Parser (List Token)
-whitespaceOrComment =
+whitespaceOrCommentStep : List Token -> Parser (Step (List Token) (List Token))
+whitespaceOrCommentStep revTokens =
     oneOf
-        [ keep oneOrMore isSpace
-            |> map ((,) T.Normal >> List.singleton)
+        [ chompIfThenWhile isSpace
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
         , lineBreakList
+            |> map (\ns -> Loop (ns ++ revTokens))
         , comment
+            |> map (\ns -> Loop (ns ++ revTokens))
         ]
 
 
 lineBreakList : Parser (List Token)
 lineBreakList =
-    keep (Exactly 1) isLineBreak
-        |> map ((,) T.LineBreak)
-        |> repeat oneOrMore
+    symbol "\n"
+        |> map (\_ -> [ ( T.LineBreak, "\n" ) ])
 
 
 number : Parser Token
 number =
     SyntaxHighlight.Language.Helpers.number
-        |> source
-        |> map ((,) (T.C Number))
+        |> getChompedString
+        |> map (\b -> ( T.C Number, b ))
 
 
 jsEscapable : Parser (List Token)
 jsEscapable =
     escapable
-        |> source
-        |> map ((,) (T.C LiteralKeyword))
-        |> repeat oneOrMore
-
-
-consThenRevConcat : List Token -> Parser (List (List Token)) -> Parser (List Token)
-consThenRevConcat toCons =
-    map ((::) toCons >> List.reverse >> List.concat)
+        |> getChompedString
+        |> map (\b -> [ ( T.C LiteralKeyword, b ) ])
 
 
 syntaxToStyle : Syntax -> ( Style.Required, String )

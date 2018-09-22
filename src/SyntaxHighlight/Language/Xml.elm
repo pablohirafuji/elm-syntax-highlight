@@ -1,16 +1,16 @@
-module SyntaxHighlight.Language.Xml
-    exposing
-        ( toLines
-        , Syntax(..)
-        , syntaxToStyle
-          -- Exposing for tests purpose
-        , toRevTokens
-        )
+module SyntaxHighlight.Language.Xml exposing
+    ( Syntax(..)
+    ,  syntaxToStyle
+       -- Exposing for tests purpose
+
+    , toLines
+    , toRevTokens
+    )
 
 import Char
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
+import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, addThen, chompIfThenWhile, consThen, delimited, isLineBreak, isSpace, isWhitespace, thenChompWhile)
 import SyntaxHighlight.Language.Type as T
-import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen)
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
 import SyntaxHighlight.Style as Style exposing (Required(..))
@@ -26,60 +26,60 @@ type Syntax
     | AttributeValue
 
 
-toLines : String -> Result Error (List Line)
+toLines : String -> Result (List DeadEnd) (List Line)
 toLines =
-    toRevTokens
+    Parser.run toRevTokens
         >> Result.map (Line.toLines syntaxToStyle)
 
 
-toRevTokens : String -> Result Error (List Token)
+toRevTokens : Parser (List Token)
 toRevTokens =
-    mainLoop
-        |> repeat zeroOrMore
-        |> map (List.reverse >> List.concat)
-        |> Parser.run
+    loop [] mainLoop
 
 
-mainLoop : Parser (List Token)
-mainLoop =
+mainLoop : List Token -> Parser (Step (List Token) (List Token))
+mainLoop revTokens =
     oneOf
-        [ whitespace |> map List.singleton
+        [ whitespace
+            |> map (\n -> Loop (n :: revTokens))
         , comment
-        , keep oneOrMore (\c -> c /= '<' && not (isLineBreak c))
-            |> map ((,) T.Normal >> List.singleton)
-        , openTag
+            |> map (\n -> Loop (n ++ revTokens))
+        , chompIfThenWhile (\c -> c /= '<' && not (isLineBreak c))
+            |> getChompedString
+            |> map (\n -> Loop (( T.Normal, n ) :: revTokens))
+        , openTag revTokens
+            |> map Loop
+        , succeed (Done revTokens)
         ]
 
 
-openTag : Parser (List Token)
-openTag =
-    (ignore oneOrMore ((==) '<')
-        |. oneOf
-            [ ignore (Exactly 1) (\c -> c == '/' || c == '!')
-            , Parser.succeed ()
-            ]
-    )
-        |> source
-        |> map ((,) T.Normal >> List.singleton)
+openTag : List Token -> Parser (List Token)
+openTag revTokens =
+    openTagParser
+        |> getChompedString
+        |> map (\b -> ( T.Normal, b ) :: revTokens)
         |> andThen tag
+
+
+openTagParser : Parser ()
+openTagParser =
+    succeed ()
+        |. chompIf (\c -> c == '<')
+        |. oneOf
+            [ chompIf (\c -> c == '/' || c == '!')
+            , succeed ()
+            ]
 
 
 tag : List Token -> Parser (List Token)
 tag revTokens =
     oneOf
-        [ ignore (Exactly 1) isStartTagChar
-            |> thenIgnore zeroOrMore isTagChar
-            |> source
-            |> map ((,) (T.C Tag))
+        [ chompIf isStartTagChar
+            |> thenChompWhile isTagChar
+            |> getChompedString
+            |> map (\b -> ( T.C Tag, b ))
             |> andThen
-                (\n ->
-                    repeat zeroOrMore attributeLoop
-                        |> map
-                            ((::) (n :: revTokens)
-                                >> List.reverse
-                                >> List.concat
-                            )
-                )
+                (\n -> loop (n :: revTokens) attributeLoop)
         , succeed revTokens
         ]
 
@@ -94,15 +94,20 @@ isTagChar c =
     isStartTagChar c || c == '-'
 
 
-attributeLoop : Parser (List Token)
-attributeLoop =
+attributeLoop : List Token -> Parser (Step (List Token) (List Token))
+attributeLoop revTokens =
     oneOf
-        [ keep oneOrMore isAttributeChar
-            |> map ((,) (T.C Attribute))
-            |> consThen attributeConfirm []
-        , whitespace |> map List.singleton
-        , keep oneOrMore (\c -> not (isWhitespace c) && c /= '>')
-            |> map ((,) T.Normal >> List.singleton)
+        [ chompIfThenWhile isAttributeChar
+            |> getChompedString
+            |> map (\b -> ( T.C Attribute, b ))
+            |> consThen attributeConfirm revTokens
+            |> map Loop
+        , whitespace
+            |> map (\n -> Loop (n :: revTokens))
+        , chompIfThenWhile (\c -> not (isWhitespace c) && c /= '>')
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -116,8 +121,8 @@ attributeConfirm revTokens =
     oneOf
         [ whitespace
             |> consThen attributeConfirm revTokens
-        , keep (Exactly 1) ((==) '=')
-            |> map ((,) T.Normal)
+        , symbol "="
+            |> map (\_ -> ( T.Normal, "=" ))
             |> consThen attributeValueLoop revTokens
         , succeed revTokens
         ]
@@ -143,9 +148,9 @@ attributeValue =
     oneOf
         [ doubleQuote
         , quote
-        , ignore oneOrMore (\c -> not (isWhitespace c) && c /= '>')
-            |> source
-            |> map ((,) (T.C AttributeValue) >> List.singleton)
+        , chompIfThenWhile (\c -> not (isWhitespace c) && c /= '>')
+            |> getChompedString
+            |> map (\b -> [ ( T.C AttributeValue, b ) ])
         ]
 
 
@@ -159,7 +164,7 @@ doubleQuoteDelimiter =
     { start = "\""
     , end = "\""
     , isNestable = False
-    , defaultMap = ((,) (T.C AttributeValue))
+    , defaultMap = \b -> ( T.C AttributeValue, b )
     , innerParsers = [ lineBreakList ]
     , isNotRelevant = not << isLineBreak
     }
@@ -184,7 +189,7 @@ comment =
         { doubleQuoteDelimiter
             | start = "<!--"
             , end = "-->"
-            , defaultMap = ((,) T.Comment)
+            , defaultMap = \b -> ( T.Comment, b )
         }
 
 
@@ -195,21 +200,23 @@ comment =
 whitespace : Parser Token
 whitespace =
     oneOf
-        [ keep oneOrMore isSpace
-            |> map ((,) T.Normal)
+        [ chompIfThenWhile isSpace
+            |> getChompedString
+            |> map (\s -> ( T.Normal, s ))
         , lineBreak
         ]
 
 
 lineBreak : Parser Token
 lineBreak =
-    keep (Exactly 1) isLineBreak
-        |> map ((,) T.LineBreak)
+    symbol "\n"
+        |> map (\_ -> ( T.LineBreak, "\n" ))
 
 
 lineBreakList : Parser (List Token)
 lineBreakList =
-    repeat oneOrMore lineBreak
+    lineBreak
+        |> map List.singleton
 
 
 syntaxToStyle : Syntax -> ( Style.Required, String )

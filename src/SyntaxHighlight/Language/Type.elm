@@ -1,4 +1,4 @@
-module SyntaxHighlight.Language.Type exposing (Token, Syntax(..))
+module SyntaxHighlight.Language.Type exposing (Syntax(..), Token)
 
 
 type alias Token a =

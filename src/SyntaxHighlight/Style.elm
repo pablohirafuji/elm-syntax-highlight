@@ -113,6 +113,7 @@ toCssClass : ( String, Style ) -> String
 toCssClass ( selectors, style ) =
     if String.isEmpty selectors then
         ""
+
     else
         selectors ++ " {" ++ styleToCss style ++ "}"
 
@@ -132,6 +133,7 @@ emptyIfFalse : Bool -> String -> String
 emptyIfFalse bool str =
     if bool then
         str
+
     else
         ""
 
@@ -149,11 +151,11 @@ colorToCss property color =
             String.concat
                 [ property
                 , "rgb("
-                , toString r
+                , String.fromInt r
                 , ", "
-                , toString g
+                , String.fromInt g
                 , ","
-                , toString b
+                , String.fromInt b
                 , ");"
                 ]
 
@@ -161,12 +163,12 @@ colorToCss property color =
             String.concat
                 [ property
                 , "rgba("
-                , toString r
+                , String.fromInt r
                 , ", "
-                , toString g
+                , String.fromInt g
                 , ","
-                , toString b
+                , String.fromInt b
                 , ", "
-                , toString a
+                , String.fromFloat a
                 , ");"
                 ]

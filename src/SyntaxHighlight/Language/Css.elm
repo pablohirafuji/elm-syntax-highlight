@@ -1,19 +1,19 @@
-module SyntaxHighlight.Language.Css
-    exposing
-        ( toLines
-        , Syntax(..)
-        , AtRule(..)
-        , Selector(..)
-        , AttributeSelector(..)
-        , syntaxToStyle
-          -- Exposing for tests purpose
-        , toRevTokens
-        )
+module SyntaxHighlight.Language.Css exposing
+    ( AtRule(..)
+    , AttributeSelector(..)
+    , Selector(..)
+    , Syntax(..)
+    ,  syntaxToStyle
+       -- Exposing for tests purpose
 
+    , toLines
+    , toRevTokens
+    )
+
+import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, chompWhile, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, repeat, succeed)
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, escapable, isEscapable, isLineBreak, isSpace, isWhitespace, thenChompWhile, whitespaceCharSet)
 import SyntaxHighlight.Language.Type as T
-import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, whitespaceCharSet, isSpace, isLineBreak, delimited, thenIgnore, consThen, addThen, escapable, isEscapable)
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
 import SyntaxHighlight.Style as Style exposing (Required(..))
@@ -57,29 +57,30 @@ type AttributeSelector
     | AttributeOperator
 
 
-toLines : String -> Result Error (List Line)
+toLines : String -> Result (List DeadEnd) (List Line)
 toLines =
-    toRevTokens
+    Parser.run toRevTokens
         >> Result.map (Line.toLines syntaxToStyle)
 
 
-toRevTokens : String -> Result Error (List Token)
+toRevTokens : Parser (List Token)
 toRevTokens =
-    mainLoop
-        |> repeat zeroOrMore
-        |> map (List.reverse >> List.concat)
-        |> Parser.run
+    loop [] mainLoop
 
 
-mainLoop : Parser (List Token)
-mainLoop =
+mainLoop : List Token -> Parser (Step (List Token) (List Token))
+mainLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , atRule
-        , selector
-        , declarationBlock
-        , keep (Exactly 1) (always True)
-            |> map ((,) T.Normal >> List.singleton)
+        [ whitespaceOrCommentStep revTokens
+        , atRule |> map (\n -> Loop (n ++ revTokens))
+        , selector |> map (\n -> Loop (n ++ revTokens))
+        , declarationBlock |> map (\n -> Loop (n ++ revTokens))
+        , Parser.end
+            |> map (\_ -> Done revTokens)
+        , chompIf (always True)
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -90,128 +91,145 @@ mainLoop =
 atRule : Parser (List Token)
 atRule =
     symbol "@"
-        |> thenIgnore zeroOrMore isSelectorNameChar
-        |> source
+        |> thenChompWhile isSelectorNameChar
+        |> getChompedString
         |> andThen atRuleHelper
 
 
 atRuleHelper : String -> Parser (List Token)
-atRuleHelper atRule =
-    case atRule of
+atRuleHelper a =
+    case a of
         "@import" ->
-            oneOf
-                [ whitespaceOrComment
-                , stringArg "url"
-                , stringLiteral
-                , atRuleKeywordOrValue
-                , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) T.Normal >> List.singleton)
-                ]
-                |> repeat zeroOrMore
-                |> map (finishAtRules atRule)
+            (\ns ->
+                oneOf
+                    [ whitespaceOrCommentStep ns
+                    , stringArg "url" |> map (\n -> Loop (n ++ ns))
+                    , stringLiteral ns |> map Loop
+                    , atRuleKeywordOrValue ns |> map Loop
+                    , chompIf (\c -> c /= ';')
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.Normal, b ) :: ns))
+                    , succeed (Done ns)
+                    ]
+            )
+                |> loop [ ( T.C (AtRule Identifier), a ) ]
 
         "@namespace" ->
-            oneOf
-                [ whitespaceOrComment
-                , stringArg "url"
-                , stringLiteral
-                , keep oneOrMore isSelectorNameChar
-                    |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
-                , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) T.Normal >> List.singleton)
-                ]
-                |> repeat zeroOrMore
-                |> map (finishAtRules atRule)
+            (\ns ->
+                oneOf
+                    [ whitespaceOrCommentStep ns
+                    , stringArg "url" |> map (\n -> Loop (n ++ ns))
+                    , stringLiteral ns |> map Loop
+                    , chompIfThenWhile isSelectorNameChar
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.C (AtRule Prefix), b ) :: ns))
+                    , chompIf (\c -> c /= ';')
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.Normal, b ) :: ns))
+                    , succeed (Done ns)
+                    ]
+            )
+                |> loop [ ( T.C (AtRule Identifier), a ) ]
 
         "@charset" ->
-            oneOf
-                [ whitespaceOrComment
-                , stringLiteral
-                , keep oneOrMore isSelectorNameChar
-                    |> map ((,) (T.C String) >> List.singleton)
-                , keep (Exactly 1) (\c -> c /= ';')
-                    |> map ((,) T.Normal >> List.singleton)
-                ]
-                |> repeat zeroOrMore
-                |> map (finishAtRules atRule)
+            (\ns ->
+                oneOf
+                    [ whitespaceOrCommentStep ns
+                    , stringLiteral ns |> map Loop
+                    , chompIfThenWhile isSelectorNameChar
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.C String, b ) :: ns))
+                    , chompIf (\c -> c /= ';')
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.Normal, b ) :: ns))
+                    , succeed (Done ns)
+                    ]
+            )
+                |> loop [ ( T.C (AtRule Identifier), a ) ]
 
         "@media" ->
-            mediaOrSupports atRule
+            mediaOrSupports a
 
         "@supports" ->
-            mediaOrSupports atRule
+            mediaOrSupports a
 
         "@keyframes" ->
-            keyframesOrCounterStyle atRule
+            keyframesOrCounterStyle a
                 |> andThen nestableAtRuleOpener
 
         "@counter-style" ->
-            keyframesOrCounterStyle atRule
+            keyframesOrCounterStyle a
 
         "@font-feature-values" ->
-            oneOf
-                [ whitespaceOrComment
-                , keep oneOrMore isSelectorNameChar
-                    |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
-                , keep (Exactly 1) (\c -> c /= '{')
-                    |> map ((,) T.Normal >> List.singleton)
-                ]
-                |> repeat zeroOrMore
-                |> map (finishAtRules atRule)
+            (\ns ->
+                oneOf
+                    [ whitespaceOrCommentStep ns
+                    , chompIfThenWhile isSelectorNameChar
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.C (AtRule Prefix), b ) :: ns))
+                    , chompIf (\c -> c /= '{')
+                        |> getChompedString
+                        |> map (\b -> Loop (( T.Normal, b ) :: ns))
+                    , succeed (Done ns)
+                    ]
+            )
+                |> loop [ ( T.C (AtRule Identifier), a ) ]
                 |> andThen nestableAtRuleOpener
 
         _ ->
-            if Set.member atRule atRuleSet then
-                succeed [ ( T.C (AtRule Identifier), atRule ) ]
+            if Set.member a atRuleSet then
+                succeed [ ( T.C (AtRule Identifier), a ) ]
+
             else
-                succeed [ ( T.Normal, atRule ) ]
+                succeed [ ( T.Normal, a ) ]
 
 
-atRuleKeywordOrValue : Parser (List Token)
-atRuleKeywordOrValue =
-    keep oneOrMore isSelectorNameChar
+atRuleKeywordOrValue : List Token -> Parser (List Token)
+atRuleKeywordOrValue revTokens =
+    chompIfThenWhile isSelectorNameChar
+        |> getChompedString
         |> map
             (\n ->
                 if isAtRuleKeyword n then
-                    [ ( T.C (AtRule Keyword), n ) ]
+                    ( T.C (AtRule Keyword), n ) :: revTokens
+
                 else
-                    [ ( T.C (AtRule AtRuleValue), n ) ]
+                    ( T.C (AtRule AtRuleValue), n ) :: revTokens
             )
 
 
 mediaOrSupports : String -> Parser (List Token)
-mediaOrSupports atRule =
-    oneOf
-        [ whitespaceOrComment
-        , stringLiteral
-        , atRuleKeywordOrValue
-        , keep (Exactly 1) (\c -> c /= '{')
-            |> map ((,) T.Normal >> List.singleton)
-        ]
-        |> repeat zeroOrMore
-        |> map (finishAtRules atRule)
+mediaOrSupports a =
+    (\ns ->
+        oneOf
+            [ whitespaceOrCommentStep ns
+            , stringLiteral ns |> map Loop
+            , atRuleKeywordOrValue ns |> map Loop
+            , chompIf (\c -> c /= '{')
+                |> getChompedString
+                |> map (\b -> Loop (( T.Normal, b ) :: ns))
+            , succeed (Done ns)
+            ]
+    )
+        |> loop [ ( T.C (AtRule Identifier), a ) ]
         |> andThen nestableAtRuleOpener
 
 
 keyframesOrCounterStyle : String -> Parser (List Token)
-keyframesOrCounterStyle atRule =
-    oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore isSelectorNameChar
-            |> map ((,) (T.C (AtRule Prefix)) >> List.singleton)
-        , keep (Exactly 1) (\c -> c /= '{')
-            |> map ((,) T.Normal >> List.singleton)
-        ]
-        |> repeat zeroOrMore
-        |> map (finishAtRules atRule)
-
-
-finishAtRules : String -> List (List Token) -> List Token
-finishAtRules atRule ns =
-    [ ( T.C (AtRule Identifier), atRule ) ]
-        :: ns
-        |> List.reverse
-        |> List.concat
+keyframesOrCounterStyle a =
+    (\ns ->
+        oneOf
+            [ whitespaceOrCommentStep ns
+            , chompIfThenWhile isSelectorNameChar
+                |> getChompedString
+                |> map (\b -> Loop (( T.C (AtRule Prefix), b ) :: ns))
+            , chompIf (\c -> c /= '{')
+                |> getChompedString
+                |> map (\b -> Loop (( T.Normal, b ) :: ns))
+            , succeed (Done ns)
+            ]
+    )
+        |> loop [ ( T.C (AtRule Identifier), a ) ]
 
 
 nestableAtRuleOpener : List Token -> Parser (List Token)
@@ -270,7 +288,7 @@ selector =
             , pseudoElement
             , pseudoClass
             ]
-            |> map (Tuple.mapFirst (T.C << Selector) >> List.singleton)
+            |> map (\( n, s ) -> [ ( T.C (Selector n), s ) ])
         , attributeSelector
         ]
 
@@ -278,23 +296,24 @@ selector =
 id : Parser ( Selector, String )
 id =
     symbol "#"
-        |> thenIgnore zeroOrMore isSelectorNameChar
-        |> source
-        |> map ((,) Id)
+        |> thenChompWhile isSelectorNameChar
+        |> getChompedString
+        |> map (\b -> ( Id, b ))
 
 
 class : Parser ( Selector, String )
 class =
     symbol "."
-        |> thenIgnore zeroOrMore isSelectorNameChar
-        |> source
-        |> map ((,) Class)
+        |> thenChompWhile isSelectorNameChar
+        |> getChompedString
+        |> map (\b -> ( Class, b ))
 
 
 element : Parser ( Selector, String )
 element =
-    keep oneOrMore isSelectorNameChar
-        |> map ((,) Element)
+    chompIfThenWhile isSelectorNameChar
+        |> getChompedString
+        |> map (\b -> ( Element, b ))
 
 
 universal : Parser ( Selector, String )
@@ -310,24 +329,24 @@ combinator =
         , symbol "~"
         , symbol ">"
         ]
-        |> source
-        |> map ((,) Combinator)
+        |> getChompedString
+        |> map (\b -> ( Combinator, b ))
 
 
 pseudoElement : Parser ( Selector, String )
 pseudoElement =
     symbol "::"
-        |> thenIgnore zeroOrMore isSelectorNameChar
-        |> source
-        |> map ((,) PseudoElement)
+        |> thenChompWhile isSelectorNameChar
+        |> getChompedString
+        |> map (\b -> ( PseudoElement, b ))
 
 
 pseudoClass : Parser ( Selector, String )
 pseudoClass =
     symbol ":"
-        |> thenIgnore zeroOrMore isSelectorNameChar
-        |> source
-        |> map ((,) PseudoClass)
+        |> thenChompWhile isSelectorNameChar
+        |> getChompedString
+        |> map (\b -> ( PseudoClass, b ))
 
 
 isSelectorNameChar : Char -> Bool
@@ -348,34 +367,29 @@ attributeSelector =
     symbol "["
         |> map (always ( T.Normal, "[" ))
         |> andThen
-            (\opener ->
-                repeat zeroOrMore attributeSelectorLoop
-                    |> map
-                        ((::) [ opener ]
-                            >> List.reverse
-                            >> List.concat
-                        )
-            )
+            (\opener -> loop [ opener ] attributeSelectorLoop)
 
 
-attributeSelectorLoop : Parser (List Token)
-attributeSelectorLoop =
+attributeSelectorLoop : List Token -> Parser (Step (List Token) (List Token))
+attributeSelectorLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , attributeName |> map List.singleton
+        [ whitespaceOrCommentStep revTokens
+        , attributeName |> map (\n -> Loop (n :: revTokens))
         , attributeOperator
             |> andThen
                 (\operator ->
-                    attributeValue []
-                        |> map (flip (++) [ operator ])
+                    loop [ operator ] attributeValue
+                        |> map (\n -> Loop (n ++ revTokens))
                 )
+        , succeed (Done revTokens)
         ]
 
 
 attributeName : Parser Token
 attributeName =
-    keep oneOrMore (\c -> not <| Set.member c attSelNameInvalidCharSet)
-        |> map ((,) (T.C (Selector (AttributeSelector AttributeName))))
+    chompIfThenWhile (\c -> not <| Set.member c attSelNameInvalidCharSet)
+        |> getChompedString
+        |> map (\b -> ( T.C (Selector (AttributeSelector AttributeName)), b ))
 
 
 attSelNameInvalidCharSet : Set Char
@@ -399,21 +413,20 @@ attributeOperator =
         , symbol "*="
         , symbol "="
         ]
-        |> source
-        |> map ((,) (T.C (Selector (AttributeSelector AttributeOperator))))
+        |> getChompedString
+        |> map (\b -> ( T.C (Selector (AttributeSelector AttributeOperator)), b ))
 
 
-attributeValue : List Token -> Parser (List Token)
-attributeValue revSyntaxes =
+attributeValue : List Token -> Parser (Step (List Token) (List Token))
+attributeValue revTokens =
     oneOf
-        [ whitespaceOrComment
-            |> addThen attributeValue revSyntaxes
-        , stringLiteral
-            |> addThen succeed revSyntaxes
-        , keep oneOrMore (\c -> c /= ']' && not (isWhitespace c))
-            |> map ((,) (T.C (Selector (AttributeSelector AttributeValue))))
-            |> consThen succeed revSyntaxes
-        , succeed revSyntaxes
+        [ whitespaceOrCommentStep revTokens
+        , stringLiteral revTokens |> map Done
+        , chompIfThenWhile (\c -> c /= ']' && not (isWhitespace c))
+            |> getChompedString
+            |> map (\b -> ( T.C (Selector (AttributeSelector AttributeValue)), b ) :: revTokens)
+            |> map Done
+        , succeed (Done revTokens)
         ]
 
 
@@ -423,30 +436,29 @@ attributeValue revSyntaxes =
 
 declarationBlock : Parser (List Token)
 declarationBlock =
-    keep oneOrMore ((==) '{')
-        |> map ((,) T.Normal)
+    chompIfThenWhile (\c -> c == '{')
+        |> getChompedString
+        |> map (\b -> ( T.Normal, b ))
         |> andThen declarationBlockHelper
 
 
 declarationBlockHelper : Token -> Parser (List Token)
 declarationBlockHelper opener =
-    repeat zeroOrMore declarationLoop
-        |> map
-            ((::) [ opener ]
-                >> List.reverse
-                >> List.concat
-            )
+    loop [ opener ] declarationLoop
 
 
-declarationLoop : Parser (List Token)
-declarationLoop =
+declarationLoop : List Token -> Parser (Step (List Token) (List Token))
+declarationLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , keep oneOrMore isPropertyChar
-            |> map ((,) (T.C Property) >> List.singleton)
-        , keep oneOrMore (\c -> c == ';' || c == '/')
-            |> map ((,) T.Normal >> List.singleton)
-        , value
+        [ whitespaceOrCommentStep revTokens
+        , chompIfThenWhile isPropertyChar
+            |> getChompedString
+            |> map (\b -> Loop (( T.C Property, b ) :: revTokens))
+        , chompIfThenWhile (\c -> c == ';' || c == '/')
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , value |> map (\n -> Loop (n ++ revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -457,57 +469,53 @@ isPropertyChar c =
 
 value : Parser (List Token)
 value =
-    keep oneOrMore ((==) ':')
-        |> map ((,) T.Normal)
+    chompIfThenWhile ((==) ':')
+        |> getChompedString
+        |> map (\b -> ( T.Normal, b ))
         |> andThen valueHelper
 
 
 valueHelper : Token -> Parser (List Token)
 valueHelper opener =
-    repeat zeroOrMore valueLoop
-        |> map
-            ((::) [ opener ]
-                >> List.reverse
-                >> List.concat
-            )
+    loop [ opener ] valueLoop
 
 
-valueLoop : Parser (List Token)
-valueLoop =
+valueLoop : List Token -> Parser (Step (List Token) (List Token))
+valueLoop revTokens =
     oneOf
-        [ whitespaceOrComment
-        , stringLiteral
-        , number |> map List.singleton
-        , hexColor
-        , stringArg "url"
-        , stringArg "format"
-        , stringArg "local"
-        , keep oneOrMore isPropertyValueChar
+        [ whitespaceOrCommentStep revTokens
+        , stringLiteral revTokens |> map Loop
+        , number |> map (\n -> Loop (n :: revTokens))
+        , hexColor revTokens |> map Loop
+        , stringArg "url" |> map (\n -> Loop (n ++ revTokens))
+        , stringArg "format" |> map (\n -> Loop (n ++ revTokens))
+        , stringArg "local" |> map (\n -> Loop (n ++ revTokens))
+        , chompIfThenWhile isPropertyValueChar
+            |> getChompedString
             |> map
                 (\n ->
                     if isUnit n then
-                        [ ( T.C Unit, n ) ]
+                        Loop (( T.C Unit, n ) :: revTokens)
+
                     else
-                        [ ( T.C PropertyValue, n ) ]
+                        Loop (( T.C PropertyValue, n ) :: revTokens)
                 )
-        , keep oneOrMore isNotPropertyValueChar
-            |> map ((,) T.Normal >> List.singleton)
-        , keep oneOrMore isOperatorChar
-            |> map ((,) (T.C Unit) >> List.singleton)
+        , chompIfThenWhile isNotPropertyValueChar
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , chompIfThenWhile isOperatorChar
+            |> getChompedString
+            |> map (\b -> Loop (( T.C Unit, b ) :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
-hexColor : Parser (List Token)
-hexColor =
-    --SyntaxHighlight.Helpers.hexColor
-    --    |> source
-    --    |> map ((,) Number >> List.singleton)
+hexColor : List Token -> Parser (List Token)
+hexColor revTokens =
     symbol "#"
-        |> andThen
-            (\_ ->
-                keep zeroOrMore isPropertyValueChar
-                    |> map (\n -> [ ( T.C Number, "#" ++ n ) ])
-            )
+        |> thenChompWhile isPropertyValueChar
+        |> getChompedString
+        |> map (\n -> ( T.C Number, n ) :: revTokens)
 
 
 stringArg : String -> Parser (List Token)
@@ -517,9 +525,9 @@ stringArg fnStr =
         |> andThen
             (\opener ->
                 oneOf
-                    [ stringLiteral
-                        |> map (\ns -> ns ++ opener)
-                    , keep zeroOrMore ((/=) ')')
+                    [ stringLiteral opener
+                    , chompWhile (\c -> c /= ')')
+                        |> getChompedString
                         |> map (\n -> ( T.C String, n ) :: opener)
                     ]
             )
@@ -592,12 +600,13 @@ operatorCharSet =
 -- String literal
 
 
-stringLiteral : Parser (List Token)
-stringLiteral =
+stringLiteral : List Token -> Parser (List Token)
+stringLiteral revTokens =
     oneOf
         [ quote
         , doubleQuote
         ]
+        |> map (\n -> n ++ revTokens)
 
 
 quote : Parser (List Token)
@@ -610,7 +619,7 @@ quoteDelimiter =
     { start = "'"
     , end = "'"
     , isNestable = False
-    , defaultMap = ((,) (T.C String))
+    , defaultMap = \b -> ( T.C String, b )
     , innerParsers = [ lineBreak, cssEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
@@ -640,7 +649,7 @@ comment =
         { start = "/*"
         , end = "*/"
         , isNestable = False
-        , defaultMap = ((,) T.Comment)
+        , defaultMap = \b -> ( T.Comment, b )
         , innerParsers = [ lineBreak ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
@@ -655,36 +664,44 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : Parser (List Token)
-whitespaceOrComment =
+whitespaceOrCommentStep : List Token -> Parser (Step (List Token) (List Token))
+whitespaceOrCommentStep revTokens =
     oneOf
-        [ keep oneOrMore isSpace
-            |> map ((,) T.Normal >> List.singleton)
+        [ chompIfThenWhile isSpace
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
         , lineBreak
+            |> map (\ns -> Loop (ns ++ revTokens))
         , comment
+            |> map (\ns -> Loop (ns ++ revTokens))
         ]
 
 
 lineBreak : Parser (List Token)
 lineBreak =
-    keep (Exactly 1) isLineBreak
-        |> map ((,) T.LineBreak)
-        |> repeat oneOrMore
+    loop []
+        (\ns ->
+            oneOf
+                [ symbol "\n"
+                    |> map (\_ -> ( T.LineBreak, "\n" ))
+                    |> map (\n -> Loop (n :: ns))
+                , succeed (Done ns)
+                ]
+        )
 
 
 number : Parser Token
 number =
     SyntaxHighlight.Language.Helpers.number
-        |> source
-        |> map ((,) (T.C Number))
+        |> getChompedString
+        |> map (\b -> ( T.C Number, b ))
 
 
 cssEscapable : Parser (List Token)
 cssEscapable =
     escapable
-        |> source
-        |> map ((,) (T.C Number))
-        |> repeat oneOrMore
+        |> getChompedString
+        |> map (\b -> [ ( T.C Number, b ) ])
 
 
 syntaxToStyle : Syntax -> ( Style.Required, String )
@@ -693,11 +710,11 @@ syntaxToStyle syntax =
         String ->
             ( Style2, "css-s" )
 
-        AtRule atRule ->
-            atRuleToFragment atRule
+        AtRule a ->
+            atRuleToFragment a
 
-        Selector selector ->
-            selectorToFragment selector
+        Selector s ->
+            selectorToFragment s
 
         Property ->
             ( Style4, "css-p" )
@@ -713,8 +730,8 @@ syntaxToStyle syntax =
 
 
 atRuleToFragment : AtRule -> ( Style.Required, String )
-atRuleToFragment atRule =
-    case atRule of
+atRuleToFragment a =
+    case a of
         Identifier ->
             ( Style3, "css-ar-i" )
 
@@ -729,8 +746,8 @@ atRuleToFragment atRule =
 
 
 selectorToFragment : Selector -> ( Style.Required, String )
-selectorToFragment selector =
-    case selector of
+selectorToFragment s =
+    case s of
         Element ->
             ( Style3, "css-s-e" )
 

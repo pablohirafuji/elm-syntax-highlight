@@ -1,23 +1,23 @@
-module SyntaxHighlight.Language.Helpers
-    exposing
-        ( isWhitespace
-        , whitespaceCharSet
-        , isSpace
-        , isLineBreak
-        , number
-        , isNumber
-        , Delimiter
-        , delimited
-        , thenIgnore
-        , escapable
-        , isEscapable
-        , consThen
-        , addThen
-        )
+module SyntaxHighlight.Language.Helpers exposing
+    ( Delimiter
+    , addThen
+    , chompIfThenWhile
+    , consThen
+    , delimited
+    , escapable
+    , isEscapable
+    , isLineBreak
+    , isNumber
+    , isSpace
+    , isWhitespace
+    , number
+    , thenChompWhile
+    , whitespaceCharSet
+    )
 
-import Set exposing (Set)
 import Char
-import Parser exposing (Parser, (|.), oneOf, keep, Count(..), oneOrMore, symbol, ignore, zeroOrMore, lazy, fail, source, map, andThen, delayedCommit)
+import Parser exposing (..)
+import Set exposing (Set)
 
 
 isWhitespace : Char -> Bool
@@ -48,13 +48,22 @@ number : Parser ()
 number =
     oneOf
         [ positiveNumber
-        , delayedCommit (symbol "-") positiveNumber
+        , negativeNumber
         ]
+
+
+negativeNumber : Parser ()
+negativeNumber =
+    succeed ()
+        |. backtrackable (symbol "-")
+        |. positiveNumber
 
 
 positiveNumber : Parser ()
 positiveNumber =
-    ignore oneOrMore isNumber
+    succeed ()
+        |. chompIf isNumber
+        |. chompWhile isNumber
 
 
 isNumber : Char -> Bool
@@ -91,10 +100,10 @@ delimitedHelp : Delimiter a -> List a -> Parser (List a)
 delimitedHelp ({ start, end, isNotRelevant } as options) revAList =
     case ( String.uncons options.start, String.uncons options.end ) of
         ( Nothing, _ ) ->
-            fail "Trying to parse a delimited helper, but the start token cannot be an empty string!"
+            problem "Trying to parse a delimited helper, but the start token cannot be an empty string!"
 
         ( _, Nothing ) ->
-            fail "Trying to parse a delimited helper, but the end token cannot be an empty string!"
+            problem "Trying to parse a delimited helper, but the end token cannot be an empty string!"
 
         ( Just ( startChar, _ ), Just ( endChar, _ ) ) ->
             if options.isNestable then
@@ -104,6 +113,7 @@ delimitedHelp ({ start, end, isNotRelevant } as options) revAList =
                             \c -> isNotRelevant c && c /= startChar && c /= endChar
                     }
                     revAList
+
             else
                 delimitedUnnestable
                     { options
@@ -120,13 +130,10 @@ delimitedUnnestable ({ defaultMap, isNotRelevant, end, innerParsers } as options
         , Parser.end |> map (always revAList)
         , oneOf innerParsers
             |> addThen (delimitedUnnestable options) revAList
-        , oneOf
-            [ keep oneOrMore isNotRelevant |> map defaultMap
-            , ignore (Exactly 1) (always True)
-                |> thenIgnore zeroOrMore isNotRelevant
-                |> source
-                |> map defaultMap
-            ]
+        , chompIf (always True)
+            |> thenChompWhile isNotRelevant
+            |> getChompedString
+            |> map defaultMap
             |> consThen (delimitedUnnestable options) revAList
         ]
 
@@ -140,32 +147,37 @@ delimitedNestable nestLevel ({ defaultMap, isNotRelevant, start, end, innerParse
                 (\n ->
                     if nestLevel == 1 then
                         Parser.succeed n
+
                     else
                         delimitedNestable (nestLevel - 1) options n
                 )
         , symbol start
-            |> thenIgnore zeroOrMore isNotRelevant
-            |> source
+            |> thenChompWhile isNotRelevant
+            |> getChompedString
             |> map defaultMap
             |> consThen (delimitedNestable (nestLevel + 1) options) revAList
-        , Parser.end |> map (always revAList)
         , oneOf innerParsers
             |> addThen (delimitedUnnestable options) revAList
-        , oneOf
-            [ keep oneOrMore isNotRelevant |> map defaultMap
-            , ignore (Exactly 1) (always True)
-                |> thenIgnore zeroOrMore isNotRelevant
-                |> source
-                |> map defaultMap
-            ]
+        , Parser.end |> map (always revAList)
+        , chompIf (always True)
+            |> thenChompWhile isNotRelevant
+            |> getChompedString
+            |> map defaultMap
             |> consThen (delimitedNestable nestLevel options) revAList
         ]
 
 
-thenIgnore : Parser.Count -> (Char -> Bool) -> Parser a -> Parser a
-thenIgnore count isNotRelevant previousParser =
+thenChompWhile : (Char -> Bool) -> Parser a -> Parser a
+thenChompWhile isNotRelevant previousParser =
     previousParser
-        |. ignore count isNotRelevant
+        |. chompWhile isNotRelevant
+
+
+chompIfThenWhile : (Char -> Bool) -> Parser ()
+chompIfThenWhile isNotRelevant =
+    succeed ()
+        |. chompIf isNotRelevant
+        |. chompWhile isNotRelevant
 
 
 consThen : (List a -> Parser (List a)) -> List a -> Parser a -> Parser (List a)
@@ -184,8 +196,9 @@ addThen f list plist =
 
 escapable : Parser ()
 escapable =
-    Parser.delayedCommit (symbol "\\") <|
-        ignore (Exactly 1) isEscapableChar
+    succeed ()
+        |. backtrackable (symbol "\\")
+        |. chompIf isEscapableChar
 
 
 isEscapable : Char -> Bool

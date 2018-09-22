@@ -1,17 +1,17 @@
-module SyntaxHighlight.Language.Elm
-    exposing
-        ( toLines
-        , Syntax(..)
-        , syntaxToStyle
-          -- Exposing for tests purpose
-        , toRevTokens
-        )
+module SyntaxHighlight.Language.Elm exposing
+    ( Syntax(..)
+    ,  syntaxToStyle
+       -- Exposing for tests purpose
+
+    , toLines
+    , toRevTokens
+    )
 
 import Char
+import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, backtrackable, chompIf, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
 import Set exposing (Set)
-import Parser exposing (Parser, oneOf, zeroOrMore, oneOrMore, ignore, symbol, keyword, (|.), (|=), source, ignoreUntil, keep, Count(..), Error, map, andThen, delayedCommit, repeat, succeed)
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, escapable, isEscapable, isLineBreak, isSpace, isWhitespace, number, thenChompWhile)
 import SyntaxHighlight.Language.Type as T
-import SyntaxHighlight.Language.Helpers exposing (Delimiter, isWhitespace, isSpace, isLineBreak, number, delimited, thenIgnore, isEscapable, escapable, consThen, addThen)
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
 import SyntaxHighlight.Style as Style exposing (Required(..))
@@ -32,64 +32,78 @@ type Syntax
     | Number
 
 
-toLines : String -> Result Error (List Line)
+toLines : String -> Result (List DeadEnd) (List Line)
 toLines =
-    toRevTokens
+    Parser.run toRevTokens
         >> Result.map (Line.toLines syntaxToStyle)
 
 
-toRevTokens : String -> Result Error (List Token)
+toRevTokens : Parser (List Token)
 toRevTokens =
-    lineStart []
-        |> repeat zeroOrMore
-        |> map (List.reverse >> List.concat)
-        |> Parser.run
+    loop [] mainLoop
 
 
-lineStart : List Token -> Parser (List Token)
-lineStart revTokens =
+mainLoop : List Token -> Parser (Step (List Token) (List Token))
+mainLoop revTokens =
     oneOf
-        [ whitespaceOrComment succeed revTokens
-        , variable |> andThen (lineStartVariable revTokens)
-        , stringLiteral |> addThen functionBody revTokens
-        , functionBodyContent |> consThen functionBody revTokens
+        [ whitespaceOrCommentStep revTokens
+        , variable
+            |> andThen (lineStartVariable revTokens)
+            |> map Loop
+        , stringLiteral
+            |> andThen (\s -> loop (s ++ revTokens) functionBody)
+            |> map Loop
+        , functionBodyContent
+            |> andThen (\s -> loop (s :: revTokens) functionBody)
+            |> map Loop
+        , succeed (Done revTokens)
         ]
 
 
 lineStartVariable : List Token -> String -> Parser (List Token)
 lineStartVariable revTokens n =
     if n == "module" || n == "import" then
-        moduleDeclaration (( T.C Keyword, n ) :: revTokens)
+        moduleDeclaration
+            |> loop (( T.C Keyword, n ) :: revTokens)
+
     else if n == "port" then
-        portDeclaration (( T.C Keyword, n ) :: revTokens)
+        portDeclaration
+            |> loop (( T.C Keyword, n ) :: revTokens)
+
     else if isKeyword n then
-        functionBody (( T.C Keyword, n ) :: revTokens)
+        functionBody
+            |> loop (( T.C Keyword, n ) :: revTokens)
+
     else
-        functionSignature (( T.C Function, n ) :: revTokens)
+        functionSignature
+            |> loop (( T.C Function, n ) :: revTokens)
 
 
 
 -- Module Declaration
 
 
-moduleDeclaration : List Token -> Parser (List Token)
+moduleDeclaration : List Token -> Parser (Step (List Token) (List Token))
 moduleDeclaration revTokens =
     oneOf
-        [ whitespaceOrComment moduleDeclaration revTokens
+        [ whitespaceOrCommentStep revTokens
         , symbol "("
-            |> map (always ( T.Normal, "(" ))
-            |> consThen modDecParentheses revTokens
+            |> map (always (( T.Normal, "(" ) :: revTokens))
+            |> andThen (\n -> loop n modDecParentheses)
+            |> map Loop
         , oneOf
-            [ commentChar |> map ((,) T.Normal)
+            [ commentChar
+                |> map (\b -> ( T.Normal, b ))
             , keyword "exposing"
                 |> map (always ( T.C Keyword, "exposing" ))
             , keyword "as"
                 |> map (always ( T.C Keyword, "as" ))
-            , keep oneOrMore modDecIsNotRelevant
-                |> map ((,) T.Normal)
+            , chompIfThenWhile modDecIsNotRelevant
+                |> getChompedString
+                |> map (\b -> ( T.Normal, b ))
             ]
-            |> consThen moduleDeclaration revTokens
-        , succeed revTokens
+            |> map (\n -> Loop (n :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -98,30 +112,33 @@ modDecIsNotRelevant c =
     not (isWhitespace c || isCommentChar c || c == '(')
 
 
-modDecParentheses : List Token -> Parser (List Token)
+modDecParentheses : List Token -> Parser (Step (List Token) (List Token))
 modDecParentheses revTokens =
     oneOf
-        [ whitespaceOrComment modDecParentheses revTokens
+        [ whitespaceOrCommentStep revTokens
         , symbol ")"
-            |> map (always ( T.Normal, ")" ))
-            |> consThen moduleDeclaration revTokens
+            |> map (always (( T.Normal, ")" ) :: revTokens))
+            |> map Done
         , oneOf
             [ infixParser
-            , commentChar |> map ((,) T.Normal)
-            , keep oneOrMore (\c -> c == ',' || c == '.')
-                |> map ((,) T.Normal)
-            , ignore (Exactly 1) Char.isUpper
-                |> thenIgnore zeroOrMore mdpIsNotRelevant
-                |> source
-                |> map ((,) (T.C TypeSignature))
-            , keep oneOrMore mdpIsNotRelevant
-                |> map ((,) (T.C Function))
+            , commentChar |> map (\b -> ( T.Normal, b ))
+            , chompIfThenWhile (\c -> c == ',' || c == '.')
+                |> getChompedString
+                |> map (\b -> ( T.Normal, b ))
+            , chompIf Char.isUpper
+                |> thenChompWhile mdpIsNotRelevant
+                |> getChompedString
+                |> map (\b -> ( T.C TypeSignature, b ))
+            , chompIfThenWhile mdpIsNotRelevant
+                |> getChompedString
+                |> map (\b -> ( T.C Function, b ))
             ]
-            |> consThen modDecParentheses revTokens
+            |> map (\n -> Loop (n :: revTokens))
         , symbol "("
-            |> map (always ( T.Normal, "(" ))
-            |> consThen (modDecParNest 0) revTokens
-        , succeed revTokens
+            |> map (always (( T.Normal, "(" ) :: revTokens))
+            |> andThen (\n -> loop ( 0, n ) modDecParNest)
+            |> map Loop
+        , succeed (Done revTokens)
         ]
 
 
@@ -130,29 +147,31 @@ mdpIsNotRelevant c =
     not (isWhitespace c || isCommentChar c || c == '(' || c == ')' || c == ',' || c == '.')
 
 
-modDecParNest : Int -> List Token -> Parser (List Token)
-modDecParNest nestLevel revTokens =
+modDecParNest : ( Int, List Token ) -> Parser (Step ( Int, List Token ) (List Token))
+modDecParNest ( nestLevel, revTokens ) =
     oneOf
-        [ whitespaceOrComment (modDecParNest nestLevel) revTokens
+        [ whitespaceOrCommentStepNested ( nestLevel, revTokens )
         , symbol "("
-            |> map (always ( T.Normal, "(" ))
-            |> andThen (\n -> modDecParNest (nestLevel + 1) (n :: revTokens))
+            |> map (always (( T.Normal, "(" ) :: revTokens))
+            |> map (\ns -> Loop ( nestLevel + 1, ns ))
         , symbol ")"
-            |> map (always ( T.Normal, ")" ))
-            |> andThen
-                (\n ->
+            |> map (always (( T.Normal, ")" ) :: revTokens))
+            |> map
+                (\ns ->
                     if nestLevel == 0 then
-                        modDecParentheses (n :: revTokens)
+                        Done ns
+
                     else
-                        modDecParNest (nestLevel - 1) (n :: revTokens)
+                        Loop ( nestLevel - 1, ns )
                 )
         , oneOf
-            [ commentChar |> map ((,) T.Normal)
-            , keep oneOrMore (not << mdpnIsSpecialChar)
-                |> map ((,) T.Normal)
+            [ commentChar |> map (\b -> ( T.Normal, b ))
+            , chompIfThenWhile (not << mdpnIsSpecialChar)
+                |> getChompedString
+                |> map (\s -> ( T.Normal, s ))
             ]
-            |> consThen (modDecParNest nestLevel) revTokens
-        , succeed revTokens
+            |> map (\n -> Loop ( nestLevel, n :: revTokens ))
+        , succeed (Done revTokens)
         ]
 
 
@@ -165,44 +184,55 @@ mdpnIsSpecialChar c =
 -- Port Declaration
 
 
-portDeclaration : List Token -> Parser (List Token)
+portDeclaration : List Token -> Parser (Step (List Token) (List Token))
 portDeclaration revTokens =
     oneOf
-        [ whitespaceOrComment portDeclaration revTokens
-        , variable |> andThen (portDeclarationHelp revTokens)
-        , functionBody revTokens
+        [ whitespaceOrCommentStep revTokens
+        , variable
+            |> andThen (portDeclarationHelp revTokens)
+            |> map Done
+        , loop revTokens functionBody
+            |> map Done
+        , succeed (Done revTokens)
         ]
 
 
 portDeclarationHelp : List Token -> String -> Parser (List Token)
 portDeclarationHelp revTokens str =
     if str == "module" then
-        moduleDeclaration (( T.C Keyword, str ) :: revTokens)
+        moduleDeclaration
+            |> loop (( T.C Keyword, str ) :: revTokens)
+
     else
-        functionSignature (( T.C Function, str ) :: revTokens)
+        functionSignature
+            |> loop (( T.C Function, str ) :: revTokens)
 
 
 
 -- Function Signature
 
 
-functionSignature : List Token -> Parser (List Token)
+functionSignature : List Token -> Parser (Step (List Token) (List Token))
 functionSignature revTokens =
     oneOf
         [ symbol ":"
-            |> map (always ( T.C BasicSymbol, ":" ))
-            |> consThen fnSigContent revTokens
-        , whitespaceOrComment functionSignature revTokens
-        , functionBody revTokens
+            |> map (always (( T.C BasicSymbol, ":" ) :: revTokens))
+            |> andThen (\ns -> loop ns fnSigContent)
+            |> map Done
+        , whitespaceOrCommentStep revTokens
+        , loop revTokens functionBody
+            |> map Done
+        , succeed (Done revTokens)
         ]
 
 
-fnSigContent : List Token -> Parser (List Token)
+fnSigContent : List Token -> Parser (Step (List Token) (List Token))
 fnSigContent revTokens =
     oneOf
-        [ whitespaceOrComment fnSigContent revTokens
-        , fnSigContentHelp |> consThen fnSigContent revTokens
-        , succeed revTokens
+        [ whitespaceOrCommentStep revTokens
+        , fnSigContentHelp
+            |> map (\n -> Loop (n :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
@@ -211,13 +241,16 @@ fnSigContentHelp =
     oneOf
         [ symbol "()" |> map (always ( T.C TypeSignature, "()" ))
         , symbol "->" |> map (always ( T.C BasicSymbol, "->" ))
-        , keep oneOrMore (\c -> c == '(' || c == ')' || c == '-' || c == ',')
-            |> map ((,) T.Normal)
-        , ignore (Exactly 1) Char.isUpper
-            |> thenIgnore zeroOrMore fnSigIsNotRelevant
-            |> source
-            |> map ((,) (T.C TypeSignature))
-        , keep oneOrMore fnSigIsNotRelevant |> map ((,) T.Normal)
+        , chompIfThenWhile (\c -> c == '(' || c == ')' || c == '-' || c == ',')
+            |> getChompedString
+            |> map (\b -> ( T.Normal, b ))
+        , chompIf Char.isUpper
+            |> thenChompWhile fnSigIsNotRelevant
+            |> getChompedString
+            |> map (\b -> ( T.C TypeSignature, b ))
+        , chompIfThenWhile fnSigIsNotRelevant
+            |> getChompedString
+            |> map (\b -> ( T.Normal, b ))
         ]
 
 
@@ -230,34 +263,39 @@ fnSigIsNotRelevant c =
 -- Function Body
 
 
-functionBody : List Token -> Parser (List Token)
+functionBody : List Token -> Parser (Step (List Token) (List Token))
 functionBody revTokens =
     oneOf
-        [ whitespaceOrComment functionBody revTokens
-        , stringLiteral |> addThen functionBody revTokens
-        , functionBodyContent |> consThen functionBody revTokens
-        , succeed revTokens
+        [ whitespaceOrCommentStep revTokens
+        , stringLiteral
+            |> map (\ns -> Loop (ns ++ revTokens))
+        , functionBodyContent
+            |> map (\n -> Loop (n :: revTokens))
+        , succeed (Done revTokens)
         ]
 
 
 functionBodyContent : Parser Token
 functionBodyContent =
     oneOf
-        [ number |> source |> map ((,) (T.C Number))
+        [ number
+            |> getChompedString
+            |> map (\b -> ( T.C Number, b ))
         , symbol "()" |> map (always ( T.C Capitalized, "()" ))
         , infixParser
-        , basicSymbol |> map ((,) (T.C BasicSymbol))
-        , groupSymbol |> map ((,) (T.C GroupSymbol))
-        , capitalized |> map ((,) (T.C Capitalized))
+        , basicSymbol |> map (\b -> ( T.C BasicSymbol, b ))
+        , groupSymbol |> map (\b -> ( T.C GroupSymbol, b ))
+        , capitalized |> map (\b -> ( T.C Capitalized, b ))
         , variable
             |> map
                 (\n ->
                     if isKeyword n then
                         ( T.C Keyword, n )
+
                     else
                         ( T.Normal, n )
                 )
-        , weirdText |> map ((,) T.Normal)
+        , weirdText |> map (\b -> ( T.Normal, b ))
         ]
 
 
@@ -285,7 +323,8 @@ keywordSet =
 
 basicSymbol : Parser String
 basicSymbol =
-    keep oneOrMore isBasicSymbol
+    chompIfThenWhile isBasicSymbol
+        |> getChompedString
 
 
 isBasicSymbol : Char -> Bool
@@ -318,7 +357,8 @@ basicSymbols =
 
 groupSymbol : Parser String
 groupSymbol =
-    keep oneOrMore isGroupSymbol
+    chompIfThenWhile isGroupSymbol
+        |> getChompedString
 
 
 isGroupSymbol : Char -> Bool
@@ -339,16 +379,16 @@ groupSymbols =
 
 capitalized : Parser String
 capitalized =
-    ignore (Exactly 1) Char.isUpper
-        |> thenIgnore zeroOrMore isVariableChar
-        |> source
+    chompIf Char.isUpper
+        |> thenChompWhile isVariableChar
+        |> getChompedString
 
 
 variable : Parser String
 variable =
-    ignore (Exactly 1) Char.isLower
-        |> thenIgnore zeroOrMore isVariableChar
-        |> source
+    chompIf Char.isLower
+        |> thenChompWhile isVariableChar
+        |> getChompedString
 
 
 isVariableChar : Char -> Bool
@@ -363,7 +403,8 @@ isVariableChar c =
 
 weirdText : Parser String
 weirdText =
-    keep oneOrMore isVariableChar
+    chompIfThenWhile isVariableChar
+        |> getChompedString
 
 
 
@@ -372,10 +413,13 @@ weirdText =
 
 infixParser : Parser Token
 infixParser =
-    delayedCommit (symbol "(")
-        (delayedCommit (ignore oneOrMore isInfixChar) (symbol ")"))
-        |> source
-        |> map ((,) (T.C Function))
+    (getChompedString <|
+        succeed ()
+            |. backtrackable (symbol "(")
+            |. backtrackable (chompIfThenWhile isInfixChar)
+            |. backtrackable (symbol ")")
+    )
+        |> map (\b -> ( T.C Function, b ))
 
 
 isInfixChar : Char -> Bool
@@ -432,7 +476,7 @@ stringDelimiter =
     { start = "\""
     , end = "\""
     , isNestable = False
-    , defaultMap = ((,) (T.C String))
+    , defaultMap = \b -> ( T.C String, b )
     , innerParsers = [ lineBreakList, elmEscapable ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
@@ -476,9 +520,9 @@ comment =
 inlineComment : Parser (List Token)
 inlineComment =
     symbol "--"
-        |> thenIgnore zeroOrMore (not << isLineBreak)
-        |> source
-        |> map ((,) T.Comment >> List.singleton)
+        |> thenChompWhile (not << isLineBreak)
+        |> getChompedString
+        |> map (\b -> [ ( T.Comment, b ) ])
 
 
 multilineComment : Parser (List Token)
@@ -487,7 +531,7 @@ multilineComment =
         { start = "{-"
         , end = "-}"
         , isNestable = True
-        , defaultMap = ((,) T.Comment)
+        , defaultMap = \b -> ( T.Comment, b )
         , innerParsers = [ lineBreakList ]
         , isNotRelevant = \c -> not (isLineBreak c)
         }
@@ -495,7 +539,8 @@ multilineComment =
 
 commentChar : Parser String
 commentChar =
-    keep (Exactly 1) isCommentChar
+    chompIf isCommentChar
+        |> getChompedString
 
 
 isCommentChar : Char -> Bool
@@ -507,47 +552,83 @@ isCommentChar c =
 -- Helpers
 
 
-whitespaceOrComment : (List Token -> Parser (List Token)) -> List Token -> Parser (List Token)
-whitespaceOrComment continueFunction revTokens =
+whitespaceOrCommentStep : List Token -> Parser (Step (List Token) (List Token))
+whitespaceOrCommentStep revTokens =
     oneOf
-        [ space |> consThen continueFunction revTokens
+        [ space
+            |> map (\n -> Loop (n :: revTokens))
         , lineBreak
-            |> consThen (checkContext continueFunction) revTokens
-        , comment |> addThen continueFunction revTokens
+            |> map (\n -> n :: revTokens)
+            |> andThen checkContext
+        , comment
+            |> map (\n -> Loop (n ++ revTokens))
         ]
 
 
-checkContext : (List Token -> Parser (List Token)) -> List Token -> Parser (List Token)
-checkContext continueFunction revTokens =
+checkContext : List Token -> Parser (Step (List Token) (List Token))
+checkContext revTokens =
     oneOf
-        [ whitespaceOrComment continueFunction revTokens
-        , succeed revTokens
+        [ whitespaceOrCommentStep revTokens
+        , succeed (Done revTokens)
+        ]
+
+
+whitespaceOrCommentStepNested : ( Int, List Token ) -> Parser (Step ( Int, List Token ) (List Token))
+whitespaceOrCommentStepNested ( nestLevel, revTokens ) =
+    oneOf
+        [ space
+            |> map (\n -> Loop ( nestLevel, n :: revTokens ))
+        , lineBreak
+            |> map (\n -> ( nestLevel, n :: revTokens ))
+            |> andThen checkContextNested
+        , comment
+            |> map (\n -> Loop ( nestLevel, n ++ revTokens ))
+        ]
+
+
+checkContextNested : ( Int, List Token ) -> Parser (Step ( Int, List Token ) (List Token))
+checkContextNested ( nestLevel, revTokens ) =
+    oneOf
+        [ whitespaceOrCommentStepNested ( nestLevel, revTokens )
+        , succeed (Done revTokens)
         ]
 
 
 space : Parser Token
 space =
-    keep oneOrMore isSpace
-        |> map ((,) T.Normal)
+    chompIfThenWhile isSpace
+        |> getChompedString
+        |> map (\b -> ( T.Normal, b ))
 
 
 lineBreak : Parser Token
 lineBreak =
-    keep (Exactly 1) isLineBreak
-        |> map ((,) T.LineBreak)
+    symbol "\n"
+        |> map (\_ -> ( T.LineBreak, "\n" ))
 
 
 lineBreakList : Parser (List Token)
 lineBreakList =
-    repeat oneOrMore lineBreak
+    loop []
+        (\ns ->
+            oneOf
+                [ lineBreak |> map (\n -> Loop (n :: ns))
+                , succeed (Done ns)
+                ]
+        )
 
 
 elmEscapable : Parser (List Token)
 elmEscapable =
-    escapable
-        |> source
-        |> map ((,) (T.C Capitalized))
-        |> repeat oneOrMore
+    loop []
+        (\ns ->
+            oneOf
+                [ escapable
+                    |> getChompedString
+                    |> map (\b -> Loop (( T.C Capitalized, b ) :: ns))
+                , succeed (Done ns)
+                ]
+        )
 
 
 syntaxToStyle : Syntax -> ( Style.Required, String )

@@ -1,14 +1,15 @@
 module SyntaxHighlight.Theme
     exposing
         ( all
-        , monokai
         , gitHub
+        , monokai
         , oneDark
         )
 
-import SyntaxHighlight.Theme.Monokai as Monokai
 import SyntaxHighlight.Theme.GitHub as GitHub
+import SyntaxHighlight.Theme.Monokai as Monokai
 import SyntaxHighlight.Theme.OneDark as OneDark
+
 
 
 -- Add all themes name and code here to show in the Demo and Themes page

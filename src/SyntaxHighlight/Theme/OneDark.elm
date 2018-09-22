@@ -1,7 +1,8 @@
 module SyntaxHighlight.Theme.OneDark exposing (css, theme)
 
-import SyntaxHighlight.Style exposing (RequiredStyles, Color(..), noEmphasis, backgroundColor, textColor, italic)
+import SyntaxHighlight.Style exposing (Color(..), RequiredStyles, backgroundColor, italic, noEmphasis, textColor)
 import SyntaxHighlight.Theme.Type exposing (Theme, toCss)
+
 
 
 {-

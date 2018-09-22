@@ -3,9 +3,9 @@ module SyntaxHighlight.Line.Helpers
         ( toLines
         )
 
-import SyntaxHighlight.Line exposing (Line, Fragment)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..), Token)
+import SyntaxHighlight.Line exposing (Fragment, Line)
 import SyntaxHighlight.Style as Style exposing (Required(..))
-import SyntaxHighlight.Language.Type as T exposing (Token, Syntax(..))
 
 
 toLines : (a -> ( Required, String )) -> List (Token a) -> List Line
@@ -21,6 +21,7 @@ toLinesHelp toStyle ( syntax, text ) ( lines, fragments, maybeLastSyntax ) =
         , [ toFragment toStyle ( syntax, text ) ]
         , Nothing
         )
+
     else if Just syntax == maybeLastSyntax then
         -- Concat same syntax sequence to reduce html elements.
         case fragments of
@@ -36,6 +37,7 @@ toLinesHelp toStyle ( syntax, text ) ( lines, fragments, maybeLastSyntax ) =
                 , toFragment toStyle ( syntax, text ) :: fragments
                 , maybeLastSyntax
                 )
+
     else
         ( lines
         , toFragment toStyle ( syntax, text ) :: fragments
@@ -69,10 +71,10 @@ toFragment toStyle ( syntax, text ) =
                 ( requiredStyle, additionalClass ) =
                     toStyle c
             in
-                { text = text
-                , requiredStyle = requiredStyle
-                , additionalClass = additionalClass
-                }
+            { text = text
+            , requiredStyle = requiredStyle
+            , additionalClass = additionalClass
+            }
 
 
 newLine : List Fragment -> Line

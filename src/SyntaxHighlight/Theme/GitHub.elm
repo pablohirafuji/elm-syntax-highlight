@@ -1,7 +1,8 @@
 module SyntaxHighlight.Theme.GitHub exposing (css, theme)
 
-import SyntaxHighlight.Style exposing (RequiredStyles, Color(..), noEmphasis, backgroundColor, textColor)
+import SyntaxHighlight.Style exposing (Color(..), RequiredStyles, backgroundColor, noEmphasis, textColor)
 import SyntaxHighlight.Theme.Type exposing (Theme, toCss)
+
 
 
 -- GitHub inspired theme
