@@ -21,7 +21,7 @@ echo "Target: ${TARGET_BRANCH} branch"
 cd $DEMO_FOLDER
 
 ## elm.js
-$SYSCONFCPUS $ELM_MAKE Main.elm --optimize --output $TRAVIS_BUILD_DIR/elm.js --yes
+$SYSCONFCPUS $ELM_MAKE Main.elm --optimize --output $TRAVIS_BUILD_DIR/elm.js
 $UGLIFYJS $TRAVIS_BUILD_DIR/elm.js --compress "pure_funcs='F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9',pure_getters=true,keep_fargs=false,unsafe_comps=true,unsafe=true,passes=2" --output $TRAVIS_BUILD_DIR/elm.js
 $UGLIFYJS $TRAVIS_BUILD_DIR/elm.js --mangle --output $TRAVIS_BUILD_DIR/elm.js
 echo "elm.js done"
@@ -32,9 +32,10 @@ cp $DEMO_FOLDER/index.html $TRAVIS_BUILD_DIR/index.html
 echo "index.html done"
 
 ## themes.html
-$SYSCONFCPUS $ELM_MAKE Themes.elm --optimize --output elm-themes.js --yes
+cd themes-page
+$SYSCONFCPUS $ELM_MAKE Main.elm --output elm-themes.js
 node make-themes.js
-cp $DEMO_FOLDER/themes.html $TRAVIS_BUILD_DIR/themes.html
+cp $DEMO_FOLDER/themes-page/themes.html $TRAVIS_BUILD_DIR/themes.html
 echo "themes.html done"
 
 

@@ -1,13 +1,13 @@
-port module Themes exposing (..)
+port module Main exposing (Msg, ThemeModel, init, main, requiredStyles, themesList, update)
 
 import SyntaxHighlight as SH
 import SyntaxHighlight.Theme as Theme
 
 
-main : Program Never () Msg
+main : Program () () Msg
 main =
-    Platform.program
-        { init = init
+    Platform.worker
+        { init = \_ -> init
         , update = update
         , subscriptions = \_ -> Sub.none
         }

@@ -4,7 +4,7 @@ var templateFile = fs.readFileSync(path.resolve(__dirname + "/themes-template.ht
 var templateStr = templateFile.toString();
 
 
-var elm = require("./elm-themes").Themes.worker();
+var elm = require("./elm-themes").Elm.Main.init();
 elm.ports.themesList.subscribe(function(themeList){
 	var themeListHtml = ""
 	themeList.forEach(function(element, index, array) {

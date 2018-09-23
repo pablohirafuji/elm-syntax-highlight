@@ -9,8 +9,7 @@ import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
 import Json.Decode as Json
 import Parser
-import SyntaxHighlight as SH
-import SyntaxHighlight.Theme as Theme
+import SyntaxHighlight as SH exposing (Theme)
 
 
 main : Program () Model Msg
@@ -49,7 +48,7 @@ initModel =
     , lineCountStart = 1
     , lineCount = Just 1
     , theme = "Monokai"
-    , customTheme = Theme.monokai
+    , customTheme = rawMonokai
     , highlight = HighlightModel (Just SH.Add) 1 3
     }
 
@@ -330,8 +329,8 @@ updateLangModel lang model langModel =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text (textareaStyle model) ]
-        , Html.Lazy.lazy2 syntaxTheme model.theme model.customTheme
+        [ Html.Lazy.lazy textareaStyle model.theme
+        , Html.Lazy.lazy2 syntaxThemeStyle model.theme model.customTheme
         , viewLanguage "Elm" toHtmlElm model
         , viewLanguage "Javascript" toHtmlJavascript model
         , viewLanguage "Xml" toHtmlXml model
@@ -341,13 +340,18 @@ view model =
         ]
 
 
-textareaStyle : Model -> String
-textareaStyle { theme } =
+textareaStyle : String -> Html msg
+textareaStyle theme =
     let
         style a b =
-            String.join "\n"
-                [ ".textarea {caret-color: " ++ a ++ ";}"
-                , ".textarea::selection { background-color: " ++ b ++ "; }"
+            Html.node "style"
+                []
+                [ text
+                    (String.join "\n"
+                        [ ".textarea {caret-color: " ++ a ++ ";}"
+                        , ".textarea::selection { background-color: " ++ b ++ "; }"
+                        ]
+                    )
                 ]
     in
     if List.member theme [ "Monokai", "One Dark", "Custom" ] then
@@ -357,14 +361,20 @@ textareaStyle { theme } =
         style "#24292e" "rgba(0,0,0,0.2)"
 
 
-syntaxTheme : String -> String -> Html msg
-syntaxTheme currentTheme customTheme_ =
-    Dict.fromList Theme.all
-        |> Dict.get currentTheme
-        |> Maybe.withDefault customTheme_
-        |> text
-        |> List.singleton
-        |> Html.node "style" []
+syntaxThemeStyle : String -> String -> Html msg
+syntaxThemeStyle selectedTheme customTheme =
+    case selectedTheme of
+        "Monokai" ->
+            SH.useTheme SH.monokai
+
+        "GitHub" ->
+            SH.useTheme SH.gitHub
+
+        "One Dark" ->
+            SH.useTheme SH.oneDark
+
+        _ ->
+            Html.node "style" [] [ text customTheme ]
 
 
 viewLanguage : String -> (Maybe Int -> String -> HighlightModel -> Html Msg) -> Model -> Html Msg
@@ -509,10 +519,10 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
                         |> Json.map SetLanguage
                         |> Html.Events.on "change"
                     ]
-                  <|
-                    viewSelectOptions
+                    (viewSelectOptions
                         model.currentLanguage
                         (Dict.keys model.languagesModel)
+                    )
                 ]
             ]
         , li []
@@ -522,16 +532,25 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
                     [ Html.Events.on "change"
                         (Json.map SetColorScheme (Json.at [ "target", "value" ] Json.string))
                     ]
-                  <|
-                    viewSelectOptions
+                    (viewSelectOptions
                         model.theme
-                        (List.map Tuple.first Theme.all
-                            ++ [ "Custom" ]
-                        )
+                        [ "Monokai"
+                        , "GitHub"
+                        , "One Dark"
+                        , "Custom"
+                        ]
+                    )
                 ]
             ]
         , if theme == "Custom" then
-            customTheme model
+            textarea
+                [ value model.customTheme
+                , onInput SetCustomColorScheme
+                , spellcheck False
+                , style "width" "100%"
+                , Html.Attributes.rows 10
+                ]
+                []
 
           else
             text ""
@@ -540,18 +559,6 @@ viewOptions ({ currentLanguage, showLineCount, lineCountStart, theme } as model)
             , viewHighlightOptions model.highlight
             ]
         ]
-
-
-customTheme : Model -> Html Msg
-customTheme model =
-    textarea
-        [ value model.customTheme
-        , onInput SetCustomColorScheme
-        , spellcheck False
-        , style "width" "100%"
-        , Html.Attributes.rows 10
-        ]
-        []
 
 
 viewHighlightOptions : HighlightModel -> Html Msg
@@ -608,3 +615,8 @@ numberInput labelStr defaultVal msg =
             ]
             []
         ]
+
+
+rawMonokai : String
+rawMonokai =
+    ".elmsh {color: #f8f8f2;background: #23241f;}.elmsh-hl {background: #343434;}.elmsh-add {background: #003800;}.elmsh-del {background: #380000;}.elmsh-comm {color: #75715e;}.elmsh1 {color: #ae81ff;}.elmsh2 {color: #e6db74;}.elmsh3 {color: #f92672;}.elmsh4 {color: #66d9ef;}.elmsh5 {color: #a6e22e;}.elmsh6 {color: #ae81ff;}.elmsh7 {color: #fd971f;}.elmsh-elm-ts, .elmsh-js-dk, .elmsh-css-p {font-style: italic;color: #66d9ef;}.elmsh-js-ce {font-style: italic;color: #a6e22e;}.elmsh-css-ar-i {font-weight: bold;color: #f92672;}"
