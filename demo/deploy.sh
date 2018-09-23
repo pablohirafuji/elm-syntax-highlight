@@ -45,7 +45,7 @@ cd $TRAVIS_BUILD_DIR
 git checkout -b $TARGET_BRANCH
 git config user.name "Travis CI"
 git config user.email "pablohirafuji@gmail.com"
-git add index.html elm.js themes.html
+git add index.html elm.js themes.html -f
 git commit -m "Deploy to GitHub Pages: ${SHA}"
 
 
