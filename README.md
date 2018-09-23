@@ -35,5 +35,3 @@ view model =
 ## Thanks
 
 Thank you Evan for bringing joy to the frontend.
-
-Donation: BTC [1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9](https://pablohirafuji.github.io/elm-qrcode/#bitcoin:1HAyTwtxMEkJaHdUYMXVvoXp2PHgwFx2M9)
