@@ -1,12 +1,12 @@
 module Language.Xml exposing (suite)
 
-import Result exposing (Result(..))
 import Expect exposing (Expectation, equal, onFail)
 import Fuzz exposing (string)
-import Test exposing (..)
 import Parser
+import Result exposing (Result(..))
 import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
 import SyntaxHighlight.Language.Xml as Xml exposing (Syntax(..), toRevTokens)
+import Test exposing (..)
 
 
 suite : Test
@@ -26,7 +26,7 @@ suite =
             Ok [ ( Normal, "<" ), ( C Tag, "div" ), ( Normal, " " ), ( C Attribute, "class" ), ( Normal, " " ), ( Normal, "=" ) ]
         , fuzz string "Fuzz string" <|
             \fuzzStr ->
-                Xml.toRevTokens fuzzStr
+                Parser.run Xml.toRevTokens fuzzStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second
@@ -37,17 +37,17 @@ suite =
         ]
 
 
-equalTest : String -> String -> Result Parser.Error (List ( T.Syntax Xml.Syntax, String )) -> Test
+equalTest : String -> String -> Result (List Parser.DeadEnd) (List ( T.Syntax Xml.Syntax, String )) -> Test
 equalTest testName testStr testResult =
     describe testName
         [ test "Syntax equality" <|
             \() ->
-                Xml.toRevTokens testStr
+                Parser.run Xml.toRevTokens testStr
                     |> Result.map List.reverse
                     |> equal testResult
         , test "String equality" <|
             \() ->
-                Xml.toRevTokens testStr
+                Parser.run Xml.toRevTokens testStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second

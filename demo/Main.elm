@@ -8,6 +8,7 @@ import Html.Attributes exposing (checked, class, classList, id, placeholder, sel
 import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
 import Json.Decode as Json
+import Parser
 import SyntaxHighlight as SH
 import SyntaxHighlight.Theme as Theme
 
@@ -42,7 +43,7 @@ type alias Model =
 initModel : Model
 initModel =
     { scroll = Scroll 0 0
-    , currentLanguage = "Xml"
+    , currentLanguage = "Elm"
     , languagesModel = initLanguagesModel
     , showLineCount = True
     , lineCountStart = 1
@@ -329,8 +330,7 @@ updateLangModel lang model langModel =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.node "style" [] [ text bodyStyle ]
-        , Html.node "style" [] [ text (textareaStyle model) ]
+        [ Html.node "style" [] [ text (textareaStyle model) ]
         , Html.Lazy.lazy2 syntaxTheme model.theme model.customTheme
         , viewLanguage "Elm" toHtmlElm model
         , viewLanguage "Javascript" toHtmlJavascript model
@@ -452,19 +452,19 @@ toHtmlPython =
     toHtml SH.python
 
 
-toHtml : (String -> Result x SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
+toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
 toHtml parser maybeStart str hlModel =
     parser str
         |> Result.map (SH.highlightLines hlModel.mode hlModel.start hlModel.end)
         |> Result.map (SH.toBlockHtml maybeStart)
-        |> Result.mapError (\x -> text (Debug.toString x))
+        |> Result.mapError Parser.deadEndsToString
         |> (\result ->
                 case result of
                     Result.Ok a ->
                         a
 
                     Result.Err x ->
-                        x
+                        text x
            )
 
 
@@ -608,96 +608,3 @@ numberInput labelStr defaultVal msg =
             ]
             []
         ]
-
-
-bodyStyle : String
-bodyStyle =
-    """body {
-    margin: 40px auto;
-    max-width: 650px;
-    line-height: 1.6;
-    font-size: 18px;
-    color: #444;
-    padding: 0 10px;
-    text-align: center;
-}
-h1,h2,h3 {
-    line-height: 1.2;
-}
-h1 {
-    padding-bottom: 0;
-    margin-bottom: 0;
-}
-.subheading {
-    margin-top: 0;
-}
-ul {
-    text-align: left;
-}
-.container {
-    position: relative;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    text-align: left;
-}
-.textarea, .view-container {
-    box-sizing: border-box;
-    font-size: 1rem;
-    line-height: 1.2;
-    width: 100%;
-    height: 100%;
-    height: 250px;
-    font-family: monospace;
-    letter-spacing: normal;
-    word-spacing: normal;
-    padding: 0;
-    margin: 0;
-    border: 0;
-    background: transparent;
-    white-space: pre;
-}
-.textarea {
-    color: rgba(0,0,0,0);
-    resize: none;
-    z-index: 2;
-    position: relative;
-    padding: 10px;
-}
-.textarea-lc {
-    padding-left: 70px;
-}
-.textarea:focus {
-    outline: none;
-}
-.view-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    z-index:1;
-}
-
-/* Elm Syntax Highlight CSS */
-pre.elmsh {
-    padding: 10px;
-    margin: 0;
-    text-align: left;
-    overflow: auto;
-}
-code.elmsh {
-    padding: 0;
-}
-.elmsh-line:before {
-    content: attr(data-elmsh-lc);
-    display: inline-block;
-    text-align: right;
-    width: 40px;
-    padding: 0 20px 0 0;
-    opacity: 0.3;
-}
-
-/* Demo specifics */
-pre.elmsh {
-    overflow: visible;
-}"""

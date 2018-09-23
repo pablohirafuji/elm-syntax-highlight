@@ -9,7 +9,6 @@ node_js: node
 cache:
   directories:
     - elm-stuff
-    - tests/elm-stuff
     - demo/elm-stuff
     - node_modules
     - sysconfcpus
@@ -19,10 +18,10 @@ os:
 
 env:
   global:
-    - ELM_VERSION="0.18.0"
-    - ELM_TEST_VERSION="0.18.7"
+    - ELM_VERSION="0.19.0-bugfix2"
+    - ELM_TEST_VERSION="0.19.0-beta9"
     - SYSCONFCPUS="${TRAVIS_BUILD_DIR}/sysconfcpus/bin/sysconfcpus -n 2"
-    - ELM_MAKE="${TRAVIS_BUILD_DIR}/node_modules/.bin/elm-make"
+    - ELM_MAKE="${TRAVIS_BUILD_DIR}/node_modules/.bin/elm make"
     - ELM_TEST="node ${TRAVIS_BUILD_DIR}/node_modules/elm-test/bin/elm-test --compiler ${TRAVIS_BUILD_DIR}/node_modules/.bin/elm-make"
 
 install:

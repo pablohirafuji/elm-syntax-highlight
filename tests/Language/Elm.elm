@@ -1,11 +1,12 @@
 module Language.Elm exposing (suite)
 
-import Result exposing (Result(..))
 import Expect exposing (Expectation, equal, equalLists, onFail)
 import Fuzz exposing (string)
-import Test exposing (..)
-import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Parser
+import Result exposing (Result(..))
 import SyntaxHighlight.Language.Elm as Elm exposing (Syntax(..), toRevTokens)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Test exposing (..)
 
 
 suite : Test
@@ -27,7 +28,7 @@ suite =
         , equalTest "Infix" "(,)" [ ( C Function, "(,)" ) ]
         , fuzz string "Fuzz string" <|
             \fuzzStr ->
-                Elm.toRevTokens fuzzStr
+                Parser.run Elm.toRevTokens fuzzStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second
@@ -43,13 +44,13 @@ equalTest testName testStr testExpec =
     describe testName
         [ test "Syntax equality" <|
             \() ->
-                Elm.toRevTokens testStr
+                Parser.run Elm.toRevTokens testStr
                     |> Result.map List.reverse
                     |> Result.withDefault []
                     |> equalLists testExpec
         , test "String equality" <|
             \() ->
-                Elm.toRevTokens testStr
+                Parser.run Elm.toRevTokens testStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second

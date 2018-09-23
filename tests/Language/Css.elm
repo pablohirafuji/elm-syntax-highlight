@@ -1,12 +1,12 @@
 module Language.Css exposing (suite)
 
-import Result exposing (Result(..))
 import Expect exposing (Expectation, equal, onFail)
 import Fuzz exposing (string)
-import Test exposing (..)
 import Parser
-import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Result exposing (Result(..))
 import SyntaxHighlight.Language.Css as Css exposing (..)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Test exposing (..)
 
 
 suite : Test
@@ -23,7 +23,7 @@ suite =
         , equalTest "Charset at-rule" charSetStr charSetResult
         , fuzz string "Fuzz string" <|
             \fuzzStr ->
-                Css.toRevTokens fuzzStr
+                Parser.run Css.toRevTokens fuzzStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second
@@ -35,7 +35,7 @@ suite =
 
 
 type alias ParserResult =
-    Result Parser.Error (List ( T.Syntax Css.Syntax, String ))
+    Result (List Parser.DeadEnd) (List ( T.Syntax Css.Syntax, String ))
 
 
 equalTest : String -> String -> ParserResult -> Test
@@ -43,12 +43,12 @@ equalTest title strToTest expected =
     describe title
         [ test "Syntax equality" <|
             \() ->
-                Css.toRevTokens strToTest
+                Parser.run Css.toRevTokens strToTest
                     |> Result.map List.reverse
                     |> equal expected
         , test "String equality" <|
             \() ->
-                Css.toRevTokens strToTest
+                Parser.run Css.toRevTokens strToTest
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second

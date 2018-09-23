@@ -1,12 +1,12 @@
 module Language.Javascript exposing (suite)
 
-import Result exposing (Result(..))
 import Expect exposing (Expectation, equal, equalLists, onFail)
 import Fuzz exposing (string)
-import Test exposing (..)
 import Parser
-import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Result exposing (Result(..))
 import SyntaxHighlight.Language.Javascript as JS exposing (Syntax(..), toRevTokens)
+import SyntaxHighlight.Language.Type as T exposing (Syntax(..))
+import Test exposing (..)
 
 
 suite : Test
@@ -30,7 +30,7 @@ suite =
             Ok [ ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( C DeclarationKeyword, "var" ), ( Normal, " " ), ( C Keyword, "=" ), ( Normal, " " ), ( Normal, "id" ), ( Normal, ";" ), ( Normal, " " ), ( Comment, "/*" ), ( Comment, " Comment " ), ( Comment, "*/" ), ( LineBreak, "\n" ), ( Comment, "/*" ), ( Comment, " Comment" ) ]
         , fuzz string "Fuzz string" <|
             \fuzzStr ->
-                JS.toRevTokens fuzzStr
+                Parser.run JS.toRevTokens fuzzStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second
@@ -41,17 +41,17 @@ suite =
         ]
 
 
-equalTest : String -> String -> Result Parser.Error (List ( T.Syntax JS.Syntax, String )) -> Test
+equalTest : String -> String -> Result (List Parser.DeadEnd) (List ( T.Syntax JS.Syntax, String )) -> Test
 equalTest testName testStr testResult =
     describe testName
         [ test "Syntax equality" <|
             \() ->
-                JS.toRevTokens testStr
+                Parser.run JS.toRevTokens testStr
                     |> Result.map List.reverse
                     |> equal testResult
         , test "String equality" <|
             \() ->
-                JS.toRevTokens testStr
+                Parser.run JS.toRevTokens testStr
                     |> Result.map
                         (List.reverse
                             >> List.map Tuple.second
