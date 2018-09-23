@@ -3,6 +3,15 @@
 Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
 
+## Language support
+
+- Elm
+- Javascript
+- Xml
+- Css
+- Python (Thanks @brandly!)
+
+
 ## Themes
 
 You can define the theme either by copying and pasting the theme styles into your `.css` file or using the `useTheme` helper.
