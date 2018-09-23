@@ -1,9 +1,8 @@
 module SyntaxHighlight.Theme.Monokai exposing (css, theme)
 
---import SyntaxHighlight.Language.Css as Css
---import SyntaxHighlight.Language.Elm as Elm
---import SyntaxHighlight.Language.Javascript as JS
-
+import SyntaxHighlight.Language.Css as Css
+import SyntaxHighlight.Language.Elm as Elm
+import SyntaxHighlight.Language.Javascript as JS
 import SyntaxHighlight.Style exposing (Color(..), RequiredStyles, backgroundColor, bold, italic, noEmphasis, textColor)
 import SyntaxHighlight.Theme.Type as Type exposing (Syntax(..), Theme, toCss)
 
@@ -20,21 +19,20 @@ css =
 theme : Theme
 theme =
     { requiredStyles = requiredStyles
-    , customStyles = []
-
-    --[ ( [ Elm Elm.TypeSignature
-    --    , Javascript JS.DeclarationKeyword
-    --    , Css Css.Property
-    --    ]
-    --  , textColor (Hex "#66d9ef") |> italic
-    --  )
-    --, ( [ Javascript JS.ClassExtends ]
-    --  , textColor (Hex "#a6e22e") |> italic
-    --  )
-    --, ( [ Css (Css.AtRule Css.Identifier) ]
-    --  , textColor (Hex "#f92672") |> bold
-    --  )
-    --]
+    , customStyles =
+        [ ( [ Elm Elm.TypeSignature
+            , Javascript JS.DeclarationKeyword
+            , Css Css.Property
+            ]
+          , textColor (Hex "#66d9ef") |> italic
+          )
+        , ( [ Javascript JS.ClassExtends ]
+          , textColor (Hex "#a6e22e") |> italic
+          )
+        , ( [ Css (Css.AtRule Css.Identifier) ]
+          , textColor (Hex "#f92672") |> bold
+          )
+        ]
     }
 
 

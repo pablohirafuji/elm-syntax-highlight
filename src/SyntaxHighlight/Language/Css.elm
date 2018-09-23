@@ -10,7 +10,7 @@ module SyntaxHighlight.Language.Css exposing
     , toRevTokens
     )
 
-import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, chompWhile, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
+import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, getChompedString, loop, map, oneOf, succeed, symbol)
 import Set exposing (Set)
 import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, escapable, isEscapable, isLineBreak, isSpace, isWhitespace, thenChompWhile, whitespaceCharSet)
 import SyntaxHighlight.Language.Type as T
@@ -75,8 +75,6 @@ mainLoop revTokens =
         , atRule |> map (\n -> Loop (n ++ revTokens))
         , selector |> map (\n -> Loop (n ++ revTokens))
         , declarationBlock |> map (\n -> Loop (n ++ revTokens))
-        , Parser.end
-            |> map (\_ -> Done revTokens)
         , chompIf (always True)
             |> getChompedString
             |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
@@ -103,7 +101,7 @@ atRuleHelper a =
             (\ns ->
                 oneOf
                     [ whitespaceOrCommentStep ns
-                    , stringArg "url" |> map (\n -> Loop (n ++ ns))
+                    , stringArg "url" ns |> map Loop
                     , stringLiteral ns |> map Loop
                     , atRuleKeywordOrValue ns |> map Loop
                     , chompIf (\c -> c /= ';')
@@ -118,7 +116,7 @@ atRuleHelper a =
             (\ns ->
                 oneOf
                     [ whitespaceOrCommentStep ns
-                    , stringArg "url" |> map (\n -> Loop (n ++ ns))
+                    , stringArg "url" ns |> map Loop
                     , stringLiteral ns |> map Loop
                     , chompIfThenWhile isSelectorNameChar
                         |> getChompedString
@@ -487,9 +485,9 @@ valueLoop revTokens =
         , stringLiteral revTokens |> map Loop
         , number |> map (\n -> Loop (n :: revTokens))
         , hexColor revTokens |> map Loop
-        , stringArg "url" |> map (\n -> Loop (n ++ revTokens))
-        , stringArg "format" |> map (\n -> Loop (n ++ revTokens))
-        , stringArg "local" |> map (\n -> Loop (n ++ revTokens))
+        , stringArg "url" revTokens |> map Loop
+        , stringArg "format" revTokens |> map Loop
+        , stringArg "local" revTokens |> map Loop
         , chompIfThenWhile isPropertyValueChar
             |> getChompedString
             |> map
@@ -518,17 +516,18 @@ hexColor revTokens =
         |> map (\n -> ( T.C Number, n ) :: revTokens)
 
 
-stringArg : String -> Parser (List Token)
-stringArg fnStr =
-    keyword (fnStr ++ "(")
-        |> map (always [ ( T.Normal, "(" ), ( T.C PropertyValue, fnStr ) ])
+stringArg : String -> List Token -> Parser (List Token)
+stringArg fnStr revTokens =
+    symbol (fnStr ++ "(")
+        |> map (always (( T.Normal, "(" ) :: ( T.C PropertyValue, fnStr ) :: revTokens))
         |> andThen
-            (\opener ->
+            (\revT_ ->
                 oneOf
-                    [ stringLiteral opener
-                    , chompWhile (\c -> c /= ')')
+                    [ stringLiteral revT_
+                    , chompIfThenWhile (\c -> c /= ')')
                         |> getChompedString
-                        |> map (\n -> ( T.C String, n ) :: opener)
+                        |> map (\n -> ( T.C String, n ) :: revT_)
+                    , succeed revT_
                     ]
             )
 
@@ -679,15 +678,8 @@ whitespaceOrCommentStep revTokens =
 
 lineBreak : Parser (List Token)
 lineBreak =
-    loop []
-        (\ns ->
-            oneOf
-                [ symbol "\n"
-                    |> map (\_ -> ( T.LineBreak, "\n" ))
-                    |> map (\n -> Loop (n :: ns))
-                , succeed (Done ns)
-                ]
-        )
+    symbol "\n"
+        |> map (\_ -> [ ( T.LineBreak, "\n" ) ])
 
 
 number : Parser Token

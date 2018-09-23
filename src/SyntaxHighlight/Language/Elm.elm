@@ -46,7 +46,12 @@ toRevTokens =
 mainLoop : List Token -> Parser (Step (List Token) (List Token))
 mainLoop revTokens =
     oneOf
-        [ whitespaceOrCommentStep revTokens
+        [ space
+            |> map (\n -> Loop (n :: revTokens))
+        , lineBreak
+            |> map (\n -> Loop (n :: revTokens))
+        , comment
+            |> map (\n -> Loop (n ++ revTokens))
         , variable
             |> andThen (lineStartVariable revTokens)
             |> map Loop
@@ -609,26 +614,15 @@ lineBreak =
 
 lineBreakList : Parser (List Token)
 lineBreakList =
-    loop []
-        (\ns ->
-            oneOf
-                [ lineBreak |> map (\n -> Loop (n :: ns))
-                , succeed (Done ns)
-                ]
-        )
+    symbol "\n"
+        |> map (\_ -> [ ( T.LineBreak, "\n" ) ])
 
 
 elmEscapable : Parser (List Token)
 elmEscapable =
-    loop []
-        (\ns ->
-            oneOf
-                [ escapable
-                    |> getChompedString
-                    |> map (\b -> Loop (( T.C Capitalized, b ) :: ns))
-                , succeed (Done ns)
-                ]
-        )
+    escapable
+        |> getChompedString
+        |> map (\b -> [ ( T.C Capitalized, b ) ])
 
 
 syntaxToStyle : Syntax -> ( Style.Required, String )
