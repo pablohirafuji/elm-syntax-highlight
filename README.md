@@ -29,9 +29,6 @@ view model =
         ]
 ```
 
-
-## [Changelog](https://github.com/pablohirafuji/elm-syntax-highlight/releases)
-
 ## Thanks
 
 Thank you Evan for bringing joy to the frontend.
