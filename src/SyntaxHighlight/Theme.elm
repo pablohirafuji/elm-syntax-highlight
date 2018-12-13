@@ -1,10 +1,9 @@
-module SyntaxHighlight.Theme
-    exposing
-        ( all
-        , gitHub
-        , monokai
-        , oneDark
-        )
+module SyntaxHighlight.Theme exposing
+    ( all
+    , gitHub
+    , monokai
+    , oneDark
+    )
 
 import SyntaxHighlight.Theme.GitHub as GitHub
 import SyntaxHighlight.Theme.Monokai as Monokai

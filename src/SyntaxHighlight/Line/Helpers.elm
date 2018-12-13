@@ -1,7 +1,4 @@
-module SyntaxHighlight.Line.Helpers
-    exposing
-        ( toLines
-        )
+module SyntaxHighlight.Line.Helpers exposing (toLines)
 
 import SyntaxHighlight.Language.Type as T exposing (Syntax(..), Token)
 import SyntaxHighlight.Line exposing (Fragment, Line)
