@@ -74,6 +74,7 @@ initLanguagesModel =
         , ( "Javascript", initLanguageModel javascriptExample )
         , ( "Css", initLanguageModel cssExample )
         , ( "Python", initLanguageModel pythonExample )
+        , ( "Sql", initLanguageModel sqlExample )
         ]
 
 
@@ -199,6 +200,21 @@ class Dog(Animal):
         self.name = name
 
 d = Dog('Fido')
+"""
+
+
+sqlExample : String
+sqlExample =
+    """/*
+ * multi-line comment
+ */
+SELECT a, b, m.*
+  from w.t,
+       w.t2 AS m
+ WHERE a = avg(b)
+    or b != 0x1aB5
+   and c is True
+   AND m.key is in ['key\\'1','key2'];
 """
 
 
@@ -336,6 +352,7 @@ view model =
         , viewLanguage "Xml" toHtmlXml model
         , viewLanguage "Css" toHtmlCss model
         , viewLanguage "Python" toHtmlPython model
+        , viewLanguage "Sql" toHtmlSql model
         , viewOptions model
         ]
 
@@ -460,6 +477,11 @@ toHtmlCss =
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlPython =
     toHtml SH.python
+
+
+toHtmlSql : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlSql =
+    toHtml SH.sql
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
