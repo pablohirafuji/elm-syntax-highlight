@@ -8,8 +8,6 @@ node_js: node
 
 cache:
   directories:
-    - elm-stuff
-    - demo/elm-stuff
     - node_modules
     - sysconfcpus
 
