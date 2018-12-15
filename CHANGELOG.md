@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.1.0
+
+Add SQL support. Thanks @oschmid!
+
 
 ### 3.0.0
 
