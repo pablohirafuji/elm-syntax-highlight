@@ -12,6 +12,7 @@
             "elm/html": "1.0.0",
             "elm/json": "1.0.0",
             "elm/parser": "1.1.0",
+            "elm/regex": "1.0.0",
             "elm/time": "1.0.0"
         },
         "indirect": {
