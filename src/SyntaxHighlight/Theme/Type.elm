@@ -4,6 +4,7 @@ import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Python as Python
+import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Style as Style exposing (RequiredStyles, Style)
 
@@ -20,6 +21,7 @@ type Syntax
     | Javascript Javascript.Syntax
     | Css Css.Syntax
     | Python Python.Syntax
+    | Sql Sql.Syntax
 
 
 toCss : Theme -> String
@@ -70,4 +72,8 @@ syntaxToSelector syntax =
 
         Python pythonSyntax ->
             Python.syntaxToStyle pythonSyntax
+                |> Tuple.second
+
+        Sql sqlSyntax ->
+            Sql.syntaxToStyle sqlSyntax
                 |> Tuple.second

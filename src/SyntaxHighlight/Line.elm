@@ -1,10 +1,7 @@
-module SyntaxHighlight.Line
-    exposing
-        ( Fragment
-        , Highlight(..)
-        , Line
-        , highlightLines
-        )
+module SyntaxHighlight.Line exposing
+    ( Line, Fragment, Highlight(..)
+    , highlightLines
+    )
 
 {-| A parsed highlighted line.
 

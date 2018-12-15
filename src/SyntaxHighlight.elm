@@ -2,7 +2,7 @@ module SyntaxHighlight exposing
     ( HCode
     , toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
     , Highlight(..), highlightLines
-    , css, elm, javascript, python, xml
+    , css, elm, javascript, python, sql, xml
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     )
@@ -26,7 +26,7 @@ module SyntaxHighlight exposing
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs css, elm, javascript, python, xml
+@docs css, elm, javascript, python, sql, xml
 
 
 ## Themes
@@ -46,6 +46,7 @@ import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Python as Python
+import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Line as Line exposing (Highlight, Line)
 import SyntaxHighlight.Theme as Theme
@@ -181,6 +182,14 @@ css =
 python : String -> Result (List Parser.DeadEnd) HCode
 python =
     Python.toLines
+        >> Result.map HCode
+
+
+{-| Parse SQL syntax.
+-}
+sql : String -> Result (List Parser.DeadEnd) HCode
+sql =
+    Sql.toLines
         >> Result.map HCode
 
 

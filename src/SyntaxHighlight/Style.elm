@@ -1,4 +1,4 @@
-module SyntaxHighlight.Style exposing (..)
+module SyntaxHighlight.Style exposing (Color(..), Required(..), RequiredStyles, Style, backgroundColor, bold, colorToCss, emptyIfFalse, italic, noEmphasis, styleToCss, textColor, toCss, toCssClass)
 
 {-
    The common uses of the styles are the following:
