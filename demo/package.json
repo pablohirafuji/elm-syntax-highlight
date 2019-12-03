@@ -1,0 +1,21 @@
+{
+  "name": "elm-syntax-highlight-demo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx elm-app start",
+    "build": "npx elm-app build",
+    "test": "npx elm-app test"
+  },
+  "author": "Pablo Hirafuji <pablohirafuji@gmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "create-elm-app": "^4.0.0"
+  },
+  "engines": {
+    "node": "10.x",
+    "npm": "6.x",
+    "yarn": "1.x"
+  }
+}

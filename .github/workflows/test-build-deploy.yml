@@ -1,0 +1,47 @@
+name: Test, Build and Deploy
+on:
+  push: 
+    branches: 
+      - master
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: Setup Elm
+      uses: jorelali/setup-elm@v1
+      with:
+        elm-version: 0.19.1
+
+    - name: Test
+      run: |
+        npm install elm-test
+        node node_modules/elm-test/bin/elm-test
+
+    - name: Build themes page
+      run: |
+        cd demo/themes-page
+        elm Main.elm --output elm-themes.js
+        node make-themes.js
+        cd ..
+        cp themes-page/themes.html public
+        cd ..
+
+    - name: Build demo
+      run: |
+        cd demo
+        npm install
+        npm run build
+        cd ..
+
+    - name: Deploy demo
+      uses: JamesIves/github-pages-deploy-action@releases/v3
+      with:
+        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        BRANCH: gh-pages
+        FOLDER: demo/build
+        CLEAN: true

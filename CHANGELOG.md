@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.1.1
+
+Fix Xml declarations (#10).
+
 ### 3.1.0
 
 Add SQL support. Thanks @oschmid!
