@@ -1,67 +1,141 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Elm Syntax Highlight Themes</title>
-        <style type="text/css">
-            body {
-                margin: 40px auto ;
-                max-width: 650px;
-                line-height: 1.6;
-                font-size: 18px;
-                color: #444;
-                padding: 0 10px;
-            }
-            h1,h2,h3 {
-                line-height: 1.2
-            }
-            h1 {
-                text-align: center;
-                padding-bottom: 0;
-                margin-bottom: 0;
-            }
-            .subheading {
-                text-align: center;
-                margin-top: 0;
-            }
-            ul {
-                list-style: none;
-                padding: 0;
-            }
-            code {
-                font-size: 1rem;
-            }
 
-            /* Elm Syntax Highlight CSS */
-            pre.elmsh {
-                padding: 10px;
-                margin: 0;
-                text-align: left;
-                overflow: auto;
-            }
-            code.elmsh {
-                padding: 0;
-            }
-            .elmsh-line:before {
-                content: attr(data-elmsh-lc);
-                display: inline-block;
-                text-align: right;
-                width: 40px;
-                padding: 0 20px 0 0;
-                opacity: 0.3;
-            }
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elm Syntax Highlight Themes</title>
+  <style type="text/css">
+  body {
+    margin: 40px auto;
+    max-width: 650px;
+    line-height: 1.6;
+    font-size: 18px;
+    color: #444;
+    padding: 0 10px;
+  }
 
-            /* Monokai */
-            .elmsh {color: #f8f8f2;background: #23241f;}.elmsh-hl {background: #343434;}.elmsh-add {background: #003800;}.elmsh-del {background: #380000;}.elmsh-comm {color: #75715e;}.elmsh1 {color: #ae81ff;}.elmsh2 {color: #e6db74;}.elmsh3 {color: #f92672;}.elmsh4 {color: #66d9ef;}.elmsh5 {color: #a6e22e;}.elmsh6 {color: #ae81ff;}.elmsh7 {color: #fd971f;}.elmsh-elm-ts, .elmsh-js-dk, .elmsh-css-p {font-style: italic;color: #66d9ef;}.elmsh-js-ce {font-style: italic;color: #a6e22e;}.elmsh-css-ar-i {font-weight: bold;color: #f92672;}
+  h1,
+  h2,
+  h3 {
+    line-height: 1.2
+  }
 
-        </style>
-    </head>
-    <body>
-        <h1>Elm Syntax Highlight Themes</h1>
-        <p class="subheading"><a href="http://package.elm-lang.org/packages/pablohirafuji/elm-syntax-highlight/latest">Package</a> / <a href="https://github.com/pablohirafuji/elm-syntax-highlight">GitHub</a> / <a href="https://pablohirafuji.github.io/elm-syntax-highlight/">Demo</a></p>
-        <ul>
-            <li><details><summary>Required Styles</summary><pre class="elmsh"><code><pre class="elmsh"><code><div class="elmsh-line " data-elmsh-lc="1"><span class="elmsh3 elmsh-css-s-e">pre</span><span class="elmsh5 elmsh-css-s-cl">.elmsh</span> {
+  h1 {
+    text-align: center;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .subheading {
+    text-align: center;
+    margin-top: 0;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  code {
+    font-size: 1rem;
+  }
+
+  /* Elm Syntax Highlight CSS */
+  pre.elmsh {
+    padding: 10px;
+    margin: 0;
+    text-align: left;
+    overflow: auto;
+  }
+
+  code.elmsh {
+    padding: 0;
+  }
+
+  .elmsh-line:before {
+    content: attr(data-elmsh-lc);
+    display: inline-block;
+    text-align: right;
+    width: 40px;
+    padding: 0 20px 0 0;
+    opacity: 0.3;
+  }
+
+  /* Monokai */
+  .elmsh {
+    color: #f8f8f2;
+    background: #23241f;
+  }
+
+  .elmsh-hl {
+    background: #343434;
+  }
+
+  .elmsh-add {
+    background: #003800;
+  }
+
+  .elmsh-del {
+    background: #380000;
+  }
+
+  .elmsh-comm {
+    color: #75715e;
+  }
+
+  .elmsh1 {
+    color: #ae81ff;
+  }
+
+  .elmsh2 {
+    color: #e6db74;
+  }
+
+  .elmsh3 {
+    color: #f92672;
+  }
+
+  .elmsh4 {
+    color: #66d9ef;
+  }
+
+  .elmsh5 {
+    color: #a6e22e;
+  }
+
+  .elmsh6 {
+    color: #ae81ff;
+  }
+
+  .elmsh7 {
+    color: #fd971f;
+  }
+
+  .elmsh-elm-ts,
+  .elmsh-js-dk,
+  .elmsh-css-p {
+    font-style: italic;
+    color: #66d9ef;
+  }
+
+  .elmsh-js-ce {
+    font-style: italic;
+    color: #a6e22e;
+  }
+
+  .elmsh-css-ar-i {
+    font-weight: bold;
+    color: #f92672;
+  }
+  </style>
+</head>
+
+<body>
+  <h1>Elm Syntax Highlight Themes</h1>
+  <p class="subheading"><a href="http://package.elm-lang.org/packages/pablohirafuji/elm-syntax-highlight/latest">Package</a> / <a href="https://github.com/pablohirafuji/elm-syntax-highlight">GitHub</a> / <a href="https://pablohirafuji.github.io/elm-syntax-highlight/">Demo</a></p>
+  <ul>
+    <li><details><summary>Required Styles</summary><pre class="elmsh"><code><pre class="elmsh"><code><div class="elmsh-line " data-elmsh-lc="1"><span class="elmsh3 elmsh-css-s-e">pre</span><span class="elmsh5 elmsh-css-s-cl">.elmsh</span> {
 </div><div class="elmsh-line " data-elmsh-lc="2">    <span class="elmsh4 elmsh-css-p">padding</span>: <span class="elmsh1 elmsh-css-n">10</span><span class="elmsh3 elmsh-css-u">px</span>;
 </div><div class="elmsh-line " data-elmsh-lc="3">    <span class="elmsh4 elmsh-css-p">margin</span>: <span class="elmsh1 elmsh-css-n">0</span>;
 </div><div class="elmsh-line " data-elmsh-lc="4">    <span class="elmsh4 elmsh-css-p">text-align</span>: <span class="elmsh4 elmsh-css-pv">left</span>;
@@ -78,6 +152,7 @@
 </div><div class="elmsh-line " data-elmsh-lc="15">    <span class="elmsh4 elmsh-css-p">padding</span>: <span class="elmsh1 elmsh-css-n">0</span> <span class="elmsh1 elmsh-css-n">20</span><span class="elmsh3 elmsh-css-u">px</span> <span class="elmsh1 elmsh-css-n">0</span> <span class="elmsh1 elmsh-css-n">0</span>;
 </div><div class="elmsh-line " data-elmsh-lc="16">    <span class="elmsh4 elmsh-css-p">opacity</span>: <span class="elmsh1 elmsh-css-n">0.3</span>;
 </div><div class="elmsh-line " data-elmsh-lc="17">}</div></code></pre></code></pre></details></li><li><details><summary>Monokai</summary><pre class="elmsh"><code><pre class="elmsh"><code><div class="elmsh-line " data-elmsh-lc="1"><span class="elmsh5 elmsh-css-s-cl">.elmsh</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#f8f8f2</span>;<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#23241f</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-hl</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#343434</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-add</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#003800</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-del</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#380000</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-comm</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#75715e</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh1</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#ae81ff</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh2</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#e6db74</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh3</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#f92672</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh4</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#66d9ef</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh5</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#a6e22e</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh6</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#ae81ff</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh7</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#fd971f</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-elm-ts</span>, <span class="elmsh5 elmsh-css-s-cl">.elmsh-js-dk</span>, <span class="elmsh5 elmsh-css-s-cl">.elmsh-css-p</span> {<span class="elmsh4 elmsh-css-p">font-style</span>: <span class="elmsh4 elmsh-css-pv">italic</span>;<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#66d9ef</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-js-ce</span> {<span class="elmsh4 elmsh-css-p">font-style</span>: <span class="elmsh4 elmsh-css-pv">italic</span>;<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#a6e22e</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-css-ar-i</span> {<span class="elmsh4 elmsh-css-p">font-weight</span>: <span class="elmsh4 elmsh-css-pv">bold</span>;<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#f92672</span>;}</div></code></pre></code></pre></details></li><li><details><summary>GitHub</summary><pre class="elmsh"><code><pre class="elmsh"><code><div class="elmsh-line " data-elmsh-lc="1"><span class="elmsh5 elmsh-css-s-cl">.elmsh</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#24292e</span>;<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#ffffff</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-hl</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#fffbdd</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-add</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#eaffea</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-del</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#ffecec</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-comm</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#969896</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh1</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#005cc5</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh2</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#df5000</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh3</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#d73a49</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh4</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#0086b3</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh5</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#63a35c</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh6</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#005cc5</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh7</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#795da3</span>;}</div></code></pre></code></pre></details></li><li><details><summary>One Dark</summary><pre class="elmsh"><code><pre class="elmsh"><code><div class="elmsh-line " data-elmsh-lc="1"><span class="elmsh5 elmsh-css-s-cl">.elmsh</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#abb2bf</span>;<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh1 elmsh-css-n">#282c34</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh-hl</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh4 elmsh-css-pv">rgba</span>(<span class="elmsh1 elmsh-css-n">229</span>, <span class="elmsh1 elmsh-css-n">231</span>,<span class="elmsh1 elmsh-css-n">235</span>, <span class="elmsh1 elmsh-css-n">0.1</span>);}<span class="elmsh5 elmsh-css-s-cl">.elmsh-add</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh4 elmsh-css-pv">rgba</span>(<span class="elmsh1 elmsh-css-n">40</span>, <span class="elmsh1 elmsh-css-n">124</span>,<span class="elmsh1 elmsh-css-n">82</span>, <span class="elmsh1 elmsh-css-n">0.4</span>);}<span class="elmsh5 elmsh-css-s-cl">.elmsh-del</span> {<span class="elmsh4 elmsh-css-p">background</span>: <span class="elmsh4 elmsh-css-pv">rgba</span>(<span class="elmsh1 elmsh-css-n">136</span>, <span class="elmsh1 elmsh-css-n">64</span>,<span class="elmsh1 elmsh-css-n">67</span>, <span class="elmsh1 elmsh-css-n">0.4</span>);}<span class="elmsh5 elmsh-css-s-cl">.elmsh-comm</span> {<span class="elmsh4 elmsh-css-p">font-style</span>: <span class="elmsh4 elmsh-css-pv">italic</span>;<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#5c6370</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh1</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#d19a66</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh2</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#98c379</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh3</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#c678dd</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh4</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#c678dd</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh5</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#61aeee</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh6</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#d19a66</span>;}<span class="elmsh5 elmsh-css-s-cl">.elmsh7</span> {<span class="elmsh4 elmsh-css-p">color</span>: <span class="elmsh1 elmsh-css-n">#abb2bf</span>;}</div></code></pre></code></pre></details></li>
-        </ul>
-    </body>
+  </ul>
+</body>
+
 </html>
