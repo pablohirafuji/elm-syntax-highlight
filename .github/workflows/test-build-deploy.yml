@@ -25,7 +25,7 @@ jobs:
     - name: Build themes page
       run: |
         cd demo/themes-page
-        elm Main.elm --output elm-themes.js
+        elm make Main.elm --output elm-themes.js
         node make-themes.js
         cd ..
         cp themes-page/themes.html public
