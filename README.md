@@ -9,8 +9,8 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 - Javascript
 - Xml
 - Css
-- Python (Thanks @brandly!)
-- SQL (Thanks @oschmid!)
+- Python (Thanks [@brandly](https://github.com/brandly)!)
+- SQL (Thanks [@oschmid](https://github.com/oschmid)!)
 
 
 ## Themes
