@@ -66,7 +66,7 @@ openTagParser =
     succeed ()
         |. chompIf (\c -> c == '<')
         |. oneOf
-            [ chompIf (\c -> c == '/' || c == '!')
+            [ chompIf (\c -> c == '/' || c == '!' || c == '?')
             , succeed ()
             ]
 
