@@ -75,6 +75,7 @@ initLanguagesModel =
         , ( "Css", initLanguageModel cssExample )
         , ( "Python", initLanguageModel pythonExample )
         , ( "Sql", initLanguageModel sqlExample )
+        , ( "Json", initLanguageModel jsonExample )
         ]
 
 
@@ -218,6 +219,38 @@ SELECT a, b, m.*
 """
 
 
+jsonExample : String
+jsonExample =
+    """{
+    "type": "application",
+    "source-directories": [
+        "src",
+        "../src"
+    ],
+    "elm-version": "0.19.1",
+    "dependencies": {
+        "direct": {
+            "elm/browser": "1.0.0",
+            "elm/core": "1.0.0",
+            "elm/html": "1.0.0",
+            "elm/json": "1.0.0",
+            "elm/parser": "1.1.0",
+            "elm/regex": "1.0.0",
+            "elm/time": "1.0.0"
+        },
+        "indirect": {
+            "elm/url": "1.0.0",
+            "elm/virtual-dom": "1.0.2"
+        }
+    },
+    "test-dependencies": {
+        "direct": {},
+        "indirect": {}
+    }
+}
+"""
+
+
 
 -- Update
 
@@ -353,6 +386,7 @@ view model =
         , viewLanguage "Css" toHtmlCss model
         , viewLanguage "Python" toHtmlPython model
         , viewLanguage "Sql" toHtmlSql model
+        , viewLanguage "Json" toHtmlJson model
         , viewOptions model
         ]
 
@@ -482,6 +516,11 @@ toHtmlPython =
 toHtmlSql : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlSql =
     toHtml SH.sql
+
+
+toHtmlJson : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlJson =
+    toHtml SH.json
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
