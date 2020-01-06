@@ -1,13 +1,13 @@
 {
   "main.css": "/elm-syntax-highlight/static/css/main.90e11ac0.chunk.css",
-  "main.js": "/elm-syntax-highlight/static/js/main.690bbf92.chunk.js",
-  "main.js.map": "/elm-syntax-highlight/static/js/main.690bbf92.chunk.js.map",
+  "main.js": "/elm-syntax-highlight/static/js/main.b260f42b.chunk.js",
+  "main.js.map": "/elm-syntax-highlight/static/js/main.b260f42b.chunk.js.map",
   "runtime~main.js": "/elm-syntax-highlight/static/js/runtime~main.c918c09e.js",
   "runtime~main.js.map": "/elm-syntax-highlight/static/js/runtime~main.c918c09e.js.map",
   "vendors~main.js": "/elm-syntax-highlight/static/js/vendors~main.3ca81432.chunk.js",
   "vendors~main.js.map": "/elm-syntax-highlight/static/js/vendors~main.3ca81432.chunk.js.map",
   "./service-worker.js": "/elm-syntax-highlight/./service-worker.js",
   "index.html": "/elm-syntax-highlight/index.html",
-  "precache-manifest.39254831ba16dd0dba9ed8942953a291.js": "/elm-syntax-highlight/precache-manifest.39254831ba16dd0dba9ed8942953a291.js",
+  "precache-manifest.474033981539145da10724c5e7d308fc.js": "/elm-syntax-highlight/precache-manifest.474033981539145da10724c5e7d308fc.js",
   "themes.html": "/elm-syntax-highlight/themes.html"
 }

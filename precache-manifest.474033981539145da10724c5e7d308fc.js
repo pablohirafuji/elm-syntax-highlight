@@ -1,15 +1,15 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "563cc0e3162db9896e27ba81ba746202",
+    "revision": "41ace699fbe208b4a9b1d83e07b71ac1",
     "url": "/elm-syntax-highlight/index.html"
   },
   {
-    "revision": "690bbf9219d4db46626c",
+    "revision": "b260f42b9c87e4844888",
     "url": "/elm-syntax-highlight/static/css/main.90e11ac0.chunk.css"
   },
   {
-    "revision": "690bbf9219d4db46626c",
-    "url": "/elm-syntax-highlight/static/js/main.690bbf92.chunk.js"
+    "revision": "b260f42b9c87e4844888",
+    "url": "/elm-syntax-highlight/static/js/main.b260f42b.chunk.js"
   },
   {
     "revision": "c918c09e87bc17a1a7b1",
