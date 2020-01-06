@@ -11,6 +11,7 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 - Css
 - Python (Thanks [@brandly](https://github.com/brandly)!)
 - SQL (Thanks [@oschmid](https://github.com/oschmid)!)
+- JSON
 
 
 ## Themes

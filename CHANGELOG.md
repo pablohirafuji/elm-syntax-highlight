@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.2.0
+
+Add Json support (#11).
+
 ### 3.1.1
 
 Fix Xml declarations (#10).
