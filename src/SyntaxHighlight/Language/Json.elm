@@ -26,6 +26,7 @@ type Syntax
     | Number
     | Boolean
     | Null
+    | ObjectKey
     | Object
     | Array
 
@@ -44,43 +45,105 @@ toRevTokens =
 mainLoop : List Token -> Parser (Step (List Token) (List Token))
 mainLoop revTokens =
     oneOf
-        [ space
+        [ whitespace
             |> map (\n -> Loop (n :: revTokens))
-        , lineBreak
+        , object
             |> map (\n -> Loop (n ++ revTokens))
-        , stringLiteral revTokens
+        , chompIf (always True)
+            |> getChompedString
+            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , succeed (Done revTokens)
+        ]
+
+
+object : Parser (List Token)
+object =
+    symbol "{"
+        |> andThen
+            (\_ -> loop [ ( T.C Object, "{" ) ] objectLoop)
+
+
+objectLoop : List Token -> Parser (Step (List Token) (List Token))
+objectLoop revTokens =
+    oneOf
+        [ whitespace
+            |> map (\n -> Loop (n :: revTokens))
+        , stringLiteral ObjectKey revTokens
             |> map Loop
+        , symbol ":"
+            |> andThen
+                (\_ ->
+                    let
+                        revTokens_ =
+                            ( T.C Object, ":" )
+                                :: revTokens
+                    in
+                    oneOf
+                        [ whitespace
+                            |> andThen
+                                (\ws ->
+                                    oneOf
+                                        [ value
+                                            |> map (\v -> v ++ [ ws ])
+                                        , succeed [ ws ]
+                                        ]
+                                )
+                        , value
+                        , succeed []
+                        ]
+                        |> map (\ns -> ns ++ revTokens_)
+                )
+            |> map Loop
+        , symbol ","
+            |> map (\_ -> ( T.C Object, "," ))
+            |> map (\n -> Loop (n :: revTokens))
+        , symbol "}"
+            |> map (\_ -> ( T.C Object, "}" ))
+            |> map (\n -> Done (n :: revTokens))
+        , succeed (Done revTokens)
+        ]
+
+
+value : Parser (List Token)
+value =
+    oneOf
+        [ stringLiteral String []
         , number
-            |> map (\n -> Loop (n :: revTokens))
-        , oneOf
-            [ symbol "{"
-            , symbol "}"
-            , symbol ":"
-            ]
-            |> getChompedString
-            |> map (\s -> ( T.C Object, s ))
-            |> map (\n -> Loop (n :: revTokens))
-        , oneOf
-            [ symbol "["
-            , symbol "]"
-            ]
-            |> getChompedString
-            |> map (\s -> ( T.C Array, s ))
-            |> map (\n -> Loop (n :: revTokens))
+            |> map (\n -> [ n ])
+        , object
+        , array
         , keyword "null"
             |> getChompedString
-            |> map (\s -> ( T.C Null, s ))
-            |> map (\n -> Loop (n :: revTokens))
+            |> map (\s -> [ ( T.C Null, s ) ])
         , oneOf
             [ keyword "true"
             , keyword "false"
             ]
             |> getChompedString
-            |> map (\s -> ( T.C Boolean, s ))
+            |> map (\s -> [ ( T.C Boolean, s ) ])
+        ]
+
+
+array : Parser (List Token)
+array =
+    symbol "["
+        |> andThen
+            (\_ -> loop [ ( T.C Array, "[" ) ] arrayLoop)
+
+
+arrayLoop : List Token -> Parser (Step (List Token) (List Token))
+arrayLoop revTokens =
+    oneOf
+        [ whitespace
             |> map (\n -> Loop (n :: revTokens))
-        , chompIf (always True)
-            |> getChompedString
-            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+        , symbol ","
+            |> map (\_ -> ( T.C Array, "," ))
+            |> map (\n -> Loop (n :: revTokens))
+        , symbol "]"
+            |> map (\_ -> ( T.C Array, "]" ))
+            |> map (\n -> Done (n :: revTokens))
+        , value
+            |> map (\ns -> Loop (ns ++ revTokens))
         , succeed (Done revTokens)
         ]
 
@@ -89,30 +152,36 @@ mainLoop revTokens =
 -- String literal
 
 
-stringLiteral : List Token -> Parser (List Token)
-stringLiteral revTokens =
-    doubleQuote
+stringLiteral : Syntax -> List Token -> Parser (List Token)
+stringLiteral syntax_ revTokens =
+    delimited (doubleQuoteDelimiter syntax_)
         |> map (\n -> n ++ revTokens)
 
 
-doubleQuote : Parser (List Token)
-doubleQuote =
-    delimited doubleQuoteDelimiter
-
-
-doubleQuoteDelimiter : Delimiter Token
-doubleQuoteDelimiter =
+doubleQuoteDelimiter : Syntax -> Delimiter Token
+doubleQuoteDelimiter syntax_ =
     { start = "\""
     , end = "\""
     , isNestable = False
-    , defaultMap = \b -> ( T.C String, b )
-    , innerParsers = [ lineBreak, stringEscapable ]
+    , defaultMap = \b -> ( T.C syntax_, b )
+    , innerParsers =
+        [ map List.singleton lineBreak
+        , stringEscapable
+        ]
     , isNotRelevant = \c -> not (isLineBreak c || isEscapable c)
     }
 
 
 
 -- Helpers
+
+
+whitespace : Parser Token
+whitespace =
+    oneOf
+        [ space
+        , lineBreak
+        ]
 
 
 space : Parser Token
@@ -122,10 +191,10 @@ space =
         |> map (\b -> ( T.Normal, b ))
 
 
-lineBreak : Parser (List Token)
+lineBreak : Parser Token
 lineBreak =
     symbol "\n"
-        |> map (\_ -> [ ( T.LineBreak, "\n" ) ])
+        |> map (\_ -> ( T.LineBreak, "\n" ))
 
 
 number : Parser Token
@@ -186,6 +255,9 @@ syntaxToStyle syntax =
 
         Null ->
             ( Style3, "json-null" )
+
+        ObjectKey ->
+            ( Style4, "json-k" )
 
         Object ->
             ( Default, "json-o" )
