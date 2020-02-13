@@ -1,5 +1,10 @@
 # Changelog
 
+### 3.3.0
+
+Add `toCustom` function (#12). Thanks @BrianHicks for the idea!
+
+
 ### 3.2.0
 
 Add Json support (#11).
