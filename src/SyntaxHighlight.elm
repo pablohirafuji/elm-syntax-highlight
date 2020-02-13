@@ -5,6 +5,7 @@ module SyntaxHighlight exposing
     , css, elm, javascript, python, sql, xml, json
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
+    , CustomTransform, toCustom
     )
 
 {-| Syntax highlighting in Elm.
@@ -38,6 +39,11 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 
 @docs ConsoleOptions, toConsole
 
+
+## Custom transformation
+
+@docs CustomTransform, toCustom
+
 -}
 
 import Html exposing (Html, text)
@@ -50,6 +56,7 @@ import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Xml as Xml
 import SyntaxHighlight.Line as Line exposing (Highlight, Line)
+import SyntaxHighlight.Style as Style
 import SyntaxHighlight.Theme as Theme
 import SyntaxHighlight.View as View
 
@@ -101,49 +108,6 @@ toStaticBlockHtml maybeStart (HCode lines) =
 toStaticInlineHtml : HCode -> String
 toStaticInlineHtml (HCode lines) =
     View.toStaticInlineHtml lines
-
-
-{-| Transform a highlighted code into a list of console highlighted strings given the styling options defined by `ConsoleOptions`.
-Each string in the list is a line.
--}
-toConsole : ConsoleOptions -> HCode -> List String
-toConsole options (HCode lines) =
-    View.toConsole options lines
-
-
-{-| Console styling options.
-You can use the [rtfeldman/console-print](http://package.elm-lang.org/packages/rtfeldman/console-print/latest) package to fill in the styles.
-
-The common uses of the styles are the following:
-
-  - **default**: Default style
-  - **highlight**: Highlight style
-  - **addition**: Addition style
-  - **deletion**: Deletion style
-  - **comment**: Comment
-  - **style1**: Number
-  - **style2**: Literal string, attribute value
-  - **style3**: Keyword, tag, operator symbols (=+-\*/...)
-  - **style4**: Keyword 2, group symbols ({}(),), type signature
-  - **style5**: Function, attribute name
-  - **style6**: Literal keyword, capitalized types
-  - **style7**: Argument, parameter
-
--}
-type alias ConsoleOptions =
-    { default : String -> String
-    , highlight : String -> String
-    , addition : String -> String
-    , deletion : String -> String
-    , comment : String -> String
-    , style1 : String -> String
-    , style2 : String -> String
-    , style3 : String -> String
-    , style4 : String -> String
-    , style5 : String -> String
-    , style6 : String -> String
-    , style7 : String -> String
-    }
 
 
 {-| Parse Elm syntax.
@@ -294,3 +258,151 @@ highlightLines maybeHighlight start end (HCode lines) =
     in
     Line.highlightLines maybeHighlight_ start end lines
         |> HCode
+
+
+{-| Console styling options.
+You can use the [rtfeldman/console-print](http://package.elm-lang.org/packages/rtfeldman/console-print/latest) package to fill in the styles.
+
+The common uses of the styles are the following:
+
+  - **default**: Default style
+  - **highlight**: Highlight style
+  - **addition**: Addition style
+  - **deletion**: Deletion style
+  - **comment**: Comment
+  - **style1**: Number
+  - **style2**: Literal string, attribute value
+  - **style3**: Keyword, tag, operator symbols (=+-\*/...)
+  - **style4**: Keyword 2, group symbols ({}(),), type signature
+  - **style5**: Function, attribute name
+  - **style6**: Literal keyword, capitalized types
+  - **style7**: Argument, parameter
+
+-}
+type alias ConsoleOptions =
+    { default : String -> String
+    , highlight : String -> String
+    , addition : String -> String
+    , deletion : String -> String
+    , comment : String -> String
+    , style1 : String -> String
+    , style2 : String -> String
+    , style3 : String -> String
+    , style4 : String -> String
+    , style5 : String -> String
+    , style6 : String -> String
+    , style7 : String -> String
+    }
+
+
+{-| Transform a highlighted code into a list of console highlighted strings given the styling options defined by `ConsoleOptions`.
+Each string in the list is a line.
+-}
+toConsole : ConsoleOptions -> HCode -> List String
+toConsole options =
+    toCustom
+        { noOperation = String.concat
+        , highlight = String.concat >> options.highlight
+        , addition = String.concat >> options.addition
+        , deletion = String.concat >> options.deletion
+        , default = options.default
+        , comment = options.comment
+        , style1 = options.style1
+        , style2 = options.style2
+        , style3 = options.style3
+        , style4 = options.style4
+        , style5 = options.style5
+        , style6 = options.style6
+        , style7 = options.style7
+        }
+
+
+{-| Custom transform options.
+The common uses of the styles are the following:
+
+  - **noOperation**: No operation (aplly to the whole line)
+  - **highlight**: Highlight style (aplly to the whole line)
+  - **addition**: Addition style (aplly to the whole line)
+  - **deletion**: Deletion style (aplly to the whole line)
+  - **default**: Default style
+  - **comment**: Comment
+  - **style1**: Number
+  - **style2**: Literal string, attribute value
+  - **style3**: Keyword, tag, operator symbols (=+-\*/...)
+  - **style4**: Keyword 2, group symbols ({}(),), type signature
+  - **style5**: Function, attribute name
+  - **style6**: Literal keyword, capitalized types
+  - **style7**: Argument, parameter
+
+-}
+type alias CustomTransform fragment line =
+    { noOperation : List fragment -> line
+    , highlight : List fragment -> line
+    , addition : List fragment -> line
+    , deletion : List fragment -> line
+    , default : String -> fragment
+    , comment : String -> fragment
+    , style1 : String -> fragment
+    , style2 : String -> fragment
+    , style3 : String -> fragment
+    , style4 : String -> fragment
+    , style5 : String -> fragment
+    , style6 : String -> fragment
+    , style7 : String -> fragment
+    }
+
+
+{-| Transform a highlighted code into a list of anything you want. Each `line` in the list corresponds to a line in the original code.
+-}
+toCustom : CustomTransform fragment line -> HCode -> List line
+toCustom options (HCode lines) =
+    List.map
+        (\{ highlight, fragments } ->
+            List.map (toCustomFragment options) fragments
+                |> (\n ->
+                        case highlight of
+                            Nothing ->
+                                options.noOperation n
+
+                            Just Line.Normal ->
+                                options.highlight n
+
+                            Just Line.Add ->
+                                options.addition n
+
+                            Just Line.Del ->
+                                options.deletion n
+                   )
+        )
+        lines
+
+
+toCustomFragment : CustomTransform fragment line -> Line.Fragment -> fragment
+toCustomFragment options { text, requiredStyle, additionalClass } =
+    case requiredStyle of
+        Style.Default ->
+            options.default text
+
+        Style.Comment ->
+            options.comment text
+
+        Style.Style1 ->
+            options.style1 text
+
+        Style.Style2 ->
+            options.style2 text
+
+        Style.Style3 ->
+            options.style3 text
+
+        Style.Style4 ->
+            options.style4 text
+
+        Style.Style5 ->
+            options.style5 text
+
+        Style.Style6 ->
+            options.style6 text
+
+        Style.Style7 ->
+            options.style7 text
