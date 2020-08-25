@@ -76,6 +76,7 @@ initLanguagesModel =
         , ( "Python", initLanguageModel pythonExample )
         , ( "Sql", initLanguageModel sqlExample )
         , ( "Json", initLanguageModel jsonExample )
+        , ( "NoLang", initLanguageModel noLangExample )
         ]
 
 
@@ -251,6 +252,28 @@ jsonExample =
 """
 
 
+noLangExample : String
+noLangExample =
+    """#MAGICMACRO
+
+import theory.string.magic
+
+someVar = "language unknown"
+
+for x in (0..10) {
+    print("x: " + toString(x))
+}
+
+func appleTree(nrOfApples: Int) : List<Apple>{
+    repeat(nrOfApples, Apple)
+}
+
+while True {
+    print(toString(42/0))
+}
+"""
+
+
 
 -- Update
 
@@ -387,6 +410,7 @@ view model =
         , viewLanguage "Python" toHtmlPython model
         , viewLanguage "Sql" toHtmlSql model
         , viewLanguage "Json" toHtmlJson model
+        , viewLanguage "NoLang" toHtmlNoLang model
         , viewOptions model
         ]
 
@@ -521,6 +545,11 @@ toHtmlSql =
 toHtmlJson : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlJson =
     toHtml SH.json
+
+
+toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlNoLang =
+    toHtml SH.nolang
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
