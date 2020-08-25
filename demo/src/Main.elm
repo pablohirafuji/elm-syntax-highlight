@@ -549,7 +549,7 @@ toHtmlJson =
 
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNoLang =
-    toHtml SH.nolang
+    toHtml SH.noLang
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg

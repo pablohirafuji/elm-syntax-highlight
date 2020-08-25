@@ -1,5 +1,10 @@
 # Changelog
 
+### 3.3.1
+
+Add `noLang` for unknown language with generic styling (#13). Thanks @Anton-4!
+
+
 ### 3.3.0
 
 Add `toCustom` function (#12). Thanks @BrianHicks for the idea!

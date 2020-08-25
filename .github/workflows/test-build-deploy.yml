@@ -1,4 +1,4 @@
-name: Test, Build and Deploy
+name: Test, Build, Deploy and Publish
 on:
   push: 
     branches: 
@@ -16,6 +16,19 @@ jobs:
       uses: jorelali/setup-elm@v1
       with:
         elm-version: 0.19.1
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - uses: actions/cache@v1
+      id: elm-cache
+      with:
+        path: ~/.elm
+        key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
 
     - name: Test
       run: |
@@ -45,3 +58,8 @@ jobs:
         BRANCH: gh-pages
         FOLDER: demo/build
         CLEAN: true
+
+    - name: Publish
+      uses: dillonkearns/elm-publish-action@master
+      with:
+        github-token: ${{ secrets.ACCESS_TOKEN }}
