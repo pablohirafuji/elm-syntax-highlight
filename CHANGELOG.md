@@ -1,6 +1,11 @@
 # Changelog
 
-### 3.3.1
+### 3.4.1
+
+Fix JSON support for numbers in exponential notation (#17). Thanks @jackgene!
+
+
+### 3.4.0
 
 Add `noLang` for unknown language with generic styling (#13). Thanks @Anton-4!
 
