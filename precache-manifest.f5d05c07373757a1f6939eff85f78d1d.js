@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "8abd75595934788176f1788cf7c99b28",
+    "revision": "b2f79ab161e61d8a36a2817443471720",
     "url": "/elm-syntax-highlight/index.html"
   },
   {
