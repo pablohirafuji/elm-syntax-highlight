@@ -11,6 +11,7 @@ module SyntaxHighlight.Language.Helpers exposing
     , isSpace
     , isWhitespace
     , number
+    , numberExponentialNotation
     , thenChompWhile
     , whitespaceCharSet
     )
@@ -42,6 +43,28 @@ isSpace c =
 isLineBreak : Char -> Bool
 isLineBreak c =
     c == '\n'
+
+
+numberExponentialNotation : Parser ()
+numberExponentialNotation =
+    oneOf
+        [ positiveNumberExponentialNotation
+        , negativeNumberExponentialNotation
+        , number
+        ]
+
+
+negativeNumberExponentialNotation : Parser ()
+negativeNumberExponentialNotation =
+    succeed ()
+        |. backtrackable (symbol "-")
+        |. positiveNumberExponentialNotation
+
+
+positiveNumberExponentialNotation : Parser ()
+positiveNumberExponentialNotation =
+    succeed ()
+        |. backtrackable float
 
 
 number : Parser ()

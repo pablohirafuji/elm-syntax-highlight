@@ -199,7 +199,7 @@ lineBreak =
 
 number : Parser Token
 number =
-    SyntaxHighlight.Language.Helpers.number
+    SyntaxHighlight.Language.Helpers.numberExponentialNotation
         |> getChompedString
         |> map (\b -> ( T.C Number, b ))
 
