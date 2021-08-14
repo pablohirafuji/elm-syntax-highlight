@@ -51,4 +51,5 @@ requiredStyles =
     , style5 = textColor (Hex "#61aeee")
     , style6 = textColor (Hex "#d19a66")
     , style7 = textColor (Hex "#abb2bf")
+    , error = textColor (Hex "#ff0000")
     }

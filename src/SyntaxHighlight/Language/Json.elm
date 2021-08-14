@@ -9,7 +9,7 @@ module SyntaxHighlight.Language.Json exposing
 
 import Parser exposing ((|.), DeadEnd, Parser, Step(..), andThen, chompIf, getChompedString, keyword, loop, map, oneOf, succeed, symbol)
 import Set exposing (Set)
-import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, isEscapable, isLineBreak, isSpace, isWhitespace, thenChompWhile, whitespaceCharSet)
+import SyntaxHighlight.Language.Helpers exposing (Delimiter, chompIfThenWhile, delimited, isEscapable, isLineBreak, isSpace)
 import SyntaxHighlight.Language.Type as T
 import SyntaxHighlight.Line exposing (Line)
 import SyntaxHighlight.Line.Helpers as Line
@@ -29,6 +29,7 @@ type Syntax
     | ObjectKey
     | Object
     | Array
+    | Error
 
 
 toLines : String -> Result (List DeadEnd) (List Line)
@@ -51,7 +52,7 @@ mainLoop revTokens =
             |> map (\n -> Loop (n ++ revTokens))
         , chompIf (always True)
             |> getChompedString
-            |> map (\b -> Loop (( T.Normal, b ) :: revTokens))
+            |> map (\b -> Loop (( T.C Error, b ) :: revTokens))
         , succeed (Done revTokens)
         ]
 
@@ -264,3 +265,6 @@ syntaxToStyle syntax =
 
         Array ->
             ( Default, "json-a" )
+
+        Error ->
+            ( StyleError, "json-e" )

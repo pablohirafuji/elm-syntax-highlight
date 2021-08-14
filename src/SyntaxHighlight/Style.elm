@@ -25,6 +25,7 @@ type Required
     | Style5
     | Style6
     | Style7
+    | StyleError
 
 
 type alias RequiredStyles =
@@ -40,6 +41,7 @@ type alias RequiredStyles =
     , style5 : Style
     , style6 : Style
     , style7 : Style
+    , error : Style
     }
 
 

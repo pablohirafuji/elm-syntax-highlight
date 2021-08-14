@@ -1,6 +1,6 @@
 module SyntaxHighlight.View exposing (toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml)
 
-import Html exposing (Html, br, code, div, pre, span, text)
+import Html exposing (Html, code, div, pre, span, text)
 import Html.Attributes exposing (attribute, class, classList)
 import SyntaxHighlight.Line exposing (..)
 import SyntaxHighlight.Style exposing (Required(..))
@@ -111,6 +111,9 @@ requiredStyleToString required =
 
             Style7 ->
                 "7"
+
+            StyleError ->
+                "-err"
 
 
 

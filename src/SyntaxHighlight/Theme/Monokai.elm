@@ -4,7 +4,7 @@ import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as JS
 import SyntaxHighlight.Style exposing (Color(..), RequiredStyles, backgroundColor, bold, italic, noEmphasis, textColor)
-import SyntaxHighlight.Theme.Type as Type exposing (Syntax(..), Theme, toCss)
+import SyntaxHighlight.Theme.Type exposing (Syntax(..), Theme, toCss)
 
 
 
@@ -50,4 +50,5 @@ requiredStyles =
     , style5 = textColor (Hex "#a6e22e")
     , style6 = textColor (Hex "#ae81ff")
     , style7 = textColor (Hex "#fd971f")
+    , error = backgroundColor (Hex "#f92472")
     }

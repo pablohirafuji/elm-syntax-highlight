@@ -301,6 +301,7 @@ type alias ConsoleOptions =
     , style5 : String -> String
     , style6 : String -> String
     , style7 : String -> String
+    , error : String -> String
     }
 
 
@@ -323,6 +324,7 @@ toConsole options =
         , style5 = options.style5
         , style6 = options.style6
         , style7 = options.style7
+        , error = options.error
         }
 
 
@@ -358,6 +360,7 @@ type alias CustomTransform fragment line =
     , style5 : String -> fragment
     , style6 : String -> fragment
     , style7 : String -> fragment
+    , error : String -> fragment
     }
 
 
@@ -415,3 +418,6 @@ toCustomFragment options { text, requiredStyle, additionalClass } =
 
         Style.Style7 ->
             options.style7 text
+
+        Style.StyleError ->
+            options.error text

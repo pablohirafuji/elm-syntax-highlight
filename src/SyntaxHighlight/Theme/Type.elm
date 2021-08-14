@@ -40,6 +40,7 @@ toCss { requiredStyles, customStyles } =
     , ( ".elmsh5", requiredStyles.style5 )
     , ( ".elmsh6", requiredStyles.style6 )
     , ( ".elmsh7", requiredStyles.style7 )
+    , ( ".elmsh-err", requiredStyles.error )
     ]
         ++ List.map (Tuple.mapFirst syntaxesToSelectors) customStyles
         |> Style.toCss
