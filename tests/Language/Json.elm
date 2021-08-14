@@ -12,7 +12,11 @@ import Test exposing (..)
 suite : Test
 suite =
     describe "JSON Language Test Suite"
-        [ numberTest "integer zero" "0"
+        [ equalTest "simple object" "{\"lang\":\"JSON\"}"
+            ( Ok [(C Object,"{"),(C ObjectKey,"\""),(C ObjectKey,"lang"),(C ObjectKey,"\""),(C Object,":"),(C String,"\""),(C String,"JSON"),(C String,"\""),(C Object,"}")] )
+        , equalTest "invalid value" "{\"lang\":JSON}"
+            ( Ok [(C Object,"{"),(C ObjectKey,"\""),(C ObjectKey,"lang"),(C ObjectKey,"\""),(C Object,":"),(C Error,"J"),(C Error,"S"),(C Error,"O"),(C Error,"N"),(C Error,"}")] )
+        , numberTest "integer zero" "0"
         , numberTest "decimal zero" "0.0"
         , numberTest "life, the universe, everything" "42"
         , numberTest "negative value" "-1"
