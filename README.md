@@ -1,6 +1,6 @@
-# Elm Syntax Highlight
+# Elm Syntax Highlighting Code Editor
 
-Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
+Fork of [elm-syntax-highlight](https://github.com/pablohirafuji/elm-syntax-highlight) that is tailored for code editing.
 
 
 ## Language support

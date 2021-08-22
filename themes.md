@@ -1,9 +1,9 @@
 # Themes
 
-- [Required Styles](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#required-styles)
-- [Monokai](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#monokai)
-- [GitHub](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#github)
-- [One Dark](https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/themes.md#one-dark)
+- [Required Styles](#required-styles)
+- [Monokai](#monokai)
+- [GitHub](#github)
+- [One Dark](#one-dark)
 
 ## Required styles
 

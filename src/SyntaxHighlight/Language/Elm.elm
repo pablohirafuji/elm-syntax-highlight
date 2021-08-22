@@ -30,6 +30,7 @@ type Syntax
     | Function
     | TypeSignature
     | Number
+    | Error
 
 
 toLines : String -> Result (List DeadEnd) (List Line)
@@ -300,7 +301,7 @@ functionBodyContent =
                     else
                         ( T.Normal, n )
                 )
-        , weirdText |> map (\b -> ( T.Normal, b ))
+        , weirdText |> map (\b -> ( T.C Error, b ))
         ]
 
 
@@ -651,3 +652,6 @@ syntaxToStyle syntax =
 
         Number ->
             ( Style1, "elm-n" )
+
+        Error ->
+            ( StyleError, "elm-e" )
