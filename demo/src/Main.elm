@@ -435,7 +435,7 @@ subheading =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Elm Sytnax Highlight Demo"
+    { title = "Elm Syntax Highlight - Demo"
     , body =
         [ inlineCss
         , header
