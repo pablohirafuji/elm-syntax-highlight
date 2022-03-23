@@ -14,7 +14,7 @@ import SyntaxHighlight as SH exposing (Theme)
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = \_ -> ( initModel, Cmd.none )
         , view = view
         , update = update
@@ -398,21 +398,25 @@ updateLangModel lang model langModel =
 -- View
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div []
-        [ Html.Lazy.lazy textareaStyle model.theme
-        , Html.Lazy.lazy2 syntaxThemeStyle model.theme model.customTheme
-        , viewLanguage "Elm" toHtmlElm model
-        , viewLanguage "Javascript" toHtmlJavascript model
-        , viewLanguage "Xml" toHtmlXml model
-        , viewLanguage "Css" toHtmlCss model
-        , viewLanguage "Python" toHtmlPython model
-        , viewLanguage "Sql" toHtmlSql model
-        , viewLanguage "Json" toHtmlJson model
-        , viewLanguage "NoLang" toHtmlNoLang model
-        , viewOptions model
+    { title = "Elm Sytnax Highlight Demo"
+    , body =
+        [ div []
+            [ Html.Lazy.lazy textareaStyle model.theme
+            , Html.Lazy.lazy2 syntaxThemeStyle model.theme model.customTheme
+            , viewLanguage "Elm" toHtmlElm model
+            , viewLanguage "Javascript" toHtmlJavascript model
+            , viewLanguage "Xml" toHtmlXml model
+            , viewLanguage "Css" toHtmlCss model
+            , viewLanguage "Python" toHtmlPython model
+            , viewLanguage "Sql" toHtmlSql model
+            , viewLanguage "Json" toHtmlJson model
+            , viewLanguage "NoLang" toHtmlNoLang model
+            , viewOptions model
+            ]
         ]
+    }
 
 
 textareaStyle : String -> Html msg
