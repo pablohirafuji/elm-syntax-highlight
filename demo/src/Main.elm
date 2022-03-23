@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Events exposing (onAnimationFrame)
 import Dict exposing (Dict)
-import Html exposing (Html, a, button, code, div, h1, input, label, li, node, option, p, pre, select, small, text, textarea, ul)
+import Html exposing (Html, a, button, code, div, h1, input, label, li, main_, node, option, p, pre, select, small, text, textarea, ul)
 import Html.Attributes exposing (checked, class, classList, href, id, placeholder, selected, spellcheck, style, type_, value)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
@@ -398,11 +398,49 @@ updateLangModel lang model langModel =
 -- View
 
 
+inlineCss : Html msg
+inlineCss =
+    node "style" [] [ text inlineRawCss ]
+
+
+header : Html msg
+header =
+    h1 []
+        [ text "Elm Syntax Highlight"
+        , text " "
+        , small []
+            [ text "v3.4.1" ]
+        ]
+
+
+subheading : Html msg
+subheading =
+    p [ class "subheading" ]
+        ([ a
+            [ href "http://package.elm-lang.org/packages/pablohirafuji/elm-syntax-highlight/latest" ]
+            [ text "Package" ]
+         , a
+            [ href "https://github.com/pablohirafuji/elm-syntax-highlight" ]
+            [ text "GitHub" ]
+         , a
+            [ href "https://pablohirafuji.github.io/elm-syntax-highlight/themes.html" ]
+            [ text "Themes" ]
+         , a
+            [ href "https://github.com/pablohirafuji/elm-syntax-highlight/blob/master/demo/src/Main.elm" ]
+            [ text "Source" ]
+         ]
+            |> List.intersperse (text " / ")
+        )
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "Elm Sytnax Highlight Demo"
     , body =
-        [ div []
+        [ inlineCss
+        , header
+        , subheading
+        , div []
             [ Html.Lazy.lazy textareaStyle model.theme
             , Html.Lazy.lazy2 syntaxThemeStyle model.theme model.customTheme
             , viewLanguage "Elm" toHtmlElm model
@@ -714,3 +752,119 @@ numberInput labelStr defaultVal msg =
 rawMonokai : String
 rawMonokai =
     ".elmsh {color: #f8f8f2;background: #23241f;}.elmsh-hl {background: #343434;}.elmsh-add {background: #003800;}.elmsh-del {background: #380000;}.elmsh-comm {color: #75715e;}.elmsh1 {color: #ae81ff;}.elmsh2 {color: #e6db74;}.elmsh3 {color: #f92672;}.elmsh4 {color: #66d9ef;}.elmsh5 {color: #a6e22e;}.elmsh6 {color: #ae81ff;}.elmsh7 {color: #fd971f;}.elmsh-elm-ts, .elmsh-js-dk, .elmsh-css-p {font-style: italic;color: #66d9ef;}.elmsh-js-ce {font-style: italic;color: #a6e22e;}.elmsh-css-ar-i {font-weight: bold;color: #f92672;}"
+
+
+inlineRawCss : String
+inlineRawCss =
+    """
+body {
+  margin: 0 auto 20px auto;
+  max-width: 650px;
+  line-height: 1.6;
+  font-size: 18px;
+  color: #444;
+  padding: 0 10px;
+  text-align: center;
+  background-color: #fafafa;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h1 {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+h1 small {
+  font-size: 1rem;
+  color: #888;
+}
+
+.subheading {
+  margin-top: 0;
+}
+
+ul {
+  text-align: left;
+}
+
+.container {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.textarea,
+.view-container {
+  box-sizing: border-box;
+  font-size: 1rem;
+  line-height: 1.2;
+  width: 100%;
+  height: 100%;
+  height: 250px;
+  font-family: monospace;
+  letter-spacing: normal;
+  word-spacing: normal;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  white-space: pre;
+}
+
+.textarea {
+  color: rgba(0, 0, 0, 0);
+  resize: none;
+  z-index: 2;
+  position: relative;
+  padding: 10px;
+}
+
+.textarea-lc {
+  padding-left: 70px;
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+.view-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Elm Syntax Highlight CSS */
+pre.elmsh {
+  padding: 10px;
+  margin: 0;
+  text-align: left;
+  overflow: auto;
+}
+
+code.elmsh {
+  padding: 0;
+}
+
+.elmsh-line:before {
+  content: attr(data-elmsh-lc);
+  display: inline-block;
+  text-align: right;
+  width: 40px;
+  padding: 0 20px 0 0;
+  opacity: 0.3;
+}
+
+/* Demo specifics */
+pre.elmsh {
+  overflow: visible;
+}
+"""
