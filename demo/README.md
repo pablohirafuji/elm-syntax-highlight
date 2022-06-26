@@ -1,17 +1,15 @@
 # Elm Syntax Highlight demo
 
-This project is bootstrapped with [Create Elm App](https://github.com/halfzebra/create-elm-app).
 For more information see the [README](https://github.com/halfzebra/create-elm-app/blob/master/template/README.md).
 
 
 ## Development
 
 ```sh
-npm install
-npm start
+elm reactor
 ```
 
-Open your browser at http://localhost:3000/
+Open your browser at http://localhost:8000/ and navigate to `src/Main.elm`.
 
 
 ## Build

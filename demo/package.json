@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npx elm-app start",
-    "build": "npx elm-app build",
-    "test": "npx elm-app test"
+    "start": "npx elm reactor",
+    "build": "npx elm make src/Main.elm"
   },
   "author": "Pablo Hirafuji <pablohirafuji@gmail.com>",
   "license": "MIT",
