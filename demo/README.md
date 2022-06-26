@@ -1,7 +1,6 @@
 # Elm Syntax Highlight demo
 
-For more information see the [README](https://github.com/halfzebra/create-elm-app/blob/master/template/README.md).
-
+All commands must be run in this folder (`demo`).
 
 ## Development
 
@@ -17,7 +16,7 @@ Open your browser at http://localhost:8000/ and navigate to `src/Main.elm`.
 Build the project:
 
 ```sh
-npm run build
+node build
 ```
 
 
