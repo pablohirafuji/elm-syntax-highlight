@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npx elm reactor",
-    "build": "npx elm make src/Main.elm"
+    "start": "npx elm reactor"
   },
   "author": "Pablo Hirafuji <pablohirafuji@gmail.com>",
   "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {
-    "create-elm-app": "^4.0.0"
+  "dependencies": {
+    "elm": "^0.19.1-5",
+    "uglify-js": "^3.16.1"
   },
+  "devDependencies": {},
   "engines": {
-    "node": "10.x",
+    "node": "12.x",
     "npm": "6.x",
     "yarn": "1.x"
   }
