@@ -2,7 +2,7 @@
 
 ```shell
 cd demo
-elm-reactor
+elm reactor
 ```
 
 Demo will be available at http://localhost:8000/index.html

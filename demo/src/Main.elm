@@ -54,8 +54,8 @@ initModel =
 
 
 type alias Scroll =
-    { top : Int
-    , left : Int
+    { top : Float
+    , left : Float
     }
 
 
@@ -514,9 +514,9 @@ viewLanguage thisLang parser ({ currentLanguage, lineCount } as model) =
                 [ class "view-container"
                 , style "transform"
                     ("translate("
-                        ++ String.fromInt -langModel.scroll.left
+                        ++ String.fromFloat -langModel.scroll.left
                         ++ "px, "
-                        ++ String.fromInt -langModel.scroll.top
+                        ++ String.fromFloat -langModel.scroll.top
                         ++ "px)"
                     )
                 , style "will-change" "transform"
@@ -542,8 +542,8 @@ viewTextarea thisLang codeStr { showLineCount } =
         , spellcheck False
         , Html.Events.on "scroll"
             (Json.map2 Scroll
-                (Json.at [ "target", "scrollTop" ] Json.int)
-                (Json.at [ "target", "scrollLeft" ] Json.int)
+                (Json.at [ "target", "scrollTop" ] Json.float)
+                (Json.at [ "target", "scrollLeft" ] Json.float)
                 |> Json.map OnScroll
             )
         ]
