@@ -11,10 +11,5 @@
     "elm": "^0.19.1-5",
     "uglify-js": "^3.16.1"
   },
-  "devDependencies": {},
-  "engines": {
-    "node": "12.x",
-    "npm": "6.x",
-    "yarn": "1.x"
-  }
+  "devDependencies": {}
 }

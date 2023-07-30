@@ -3,5 +3,7 @@ elm-stuff
 .idea
 demo/elm-themes.js
 demo/themes.html
+demo/build
 elm.js
 node_modules
+.direnv
