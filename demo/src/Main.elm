@@ -422,7 +422,7 @@ header =
         [ text "Elm Syntax Highlight"
         , text " "
         , small []
-            [ text "v3.4.1" ]
+            [ text "v3.5.0" ]
         ]
 
 

@@ -2,7 +2,6 @@
 
 Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-highlight/).
 
-
 ## Language support
 
 - Elm
@@ -12,9 +11,9 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 - Python (Thanks [@brandly](https://github.com/brandly)!)
 - SQL (Thanks [@oschmid](https://github.com/oschmid)!)
 - JSON
+- Nix (Thanks [@anddani](https://github.com/anddani)!)
 
 And there is a `noLang` generic option for when the language is unknown (Thanks [@Anton-4](https://github.com/Anton-4)!).
-
 
 ## Themes
 
