@@ -2,7 +2,7 @@ module SyntaxHighlight exposing
     ( HCode
     , toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
     , Highlight(..), highlightLines
-    , css, elm, javascript, python, sql, xml, json, noLang
+    , css, elm, javascript, python, sql, xml, json, nix, noLang
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
@@ -52,6 +52,7 @@ import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Json as Json
+import SyntaxHighlight.Language.Nix as Nix
 import SyntaxHighlight.Language.NoLang as NoLang
 import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
@@ -164,6 +165,14 @@ sql =
 json : String -> Result (List Parser.DeadEnd) HCode
 json =
     Json.toLines
+        >> Result.map HCode
+
+
+{-| Parse Nix syntax.
+-}
+nix : String -> Result (List Parser.DeadEnd) HCode
+nix =
+    Nix.toLines
         >> Result.map HCode
 
 
