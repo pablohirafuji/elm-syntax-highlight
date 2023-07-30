@@ -76,6 +76,7 @@ initLanguagesModel =
         , ( "Python", initLanguageModel pythonExample )
         , ( "Sql", initLanguageModel sqlExample )
         , ( "Json", initLanguageModel jsonExample )
+        , ( "Nix", initLanguageModel nixExample )
         , ( "NoLang", initLanguageModel noLangExample )
         ]
 
@@ -248,6 +249,18 @@ jsonExample =
         "direct": {},
         "indirect": {}
     }
+}
+"""
+
+
+nixExample : String
+nixExample =
+    """{ pkgs ? import <nixpkgs> { system = "x86_64-linux"; }
+}:                                   # nixpkgs package set
+pkgs.dockerTools.buildLayeredImage { # helper to build Docker image
+  name = "nix-hello";                # give docker image a name
+  tag = "latest";                    # provide a tag
+  contents = [ pkgs.hello ];         # packages in docker image
 }
 """
 
@@ -450,6 +463,7 @@ view model =
             , viewLanguage "Python" toHtmlPython model
             , viewLanguage "Sql" toHtmlSql model
             , viewLanguage "Json" toHtmlJson model
+            , viewLanguage "Nix" toHtmlNix model
             , viewLanguage "NoLang" toHtmlNoLang model
             , viewOptions model
             ]
@@ -587,6 +601,11 @@ toHtmlSql =
 toHtmlJson : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlJson =
     toHtml SH.json
+
+
+toHtmlNix : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlNix =
+    toHtml SH.nix
 
 
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
