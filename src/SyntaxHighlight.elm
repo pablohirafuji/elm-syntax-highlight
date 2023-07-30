@@ -27,7 +27,7 @@ module SyntaxHighlight exposing
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs css, elm, javascript, python, sql, xml, json, noLang
+@docs css, elm, javascript, python, sql, xml, json, nix, noLang
 
 
 ## Themes
