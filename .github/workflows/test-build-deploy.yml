@@ -35,6 +35,13 @@ jobs:
         npm install elm-test@0.19.1-revision9
         node node_modules/elm-test/bin/elm-test
 
+    - name: Build demo
+      run: |
+        cd demo
+        npm install
+        node build.js
+        cd ..
+
     - name: Build themes page
       run: |
         cd demo/themes-page
@@ -42,13 +49,6 @@ jobs:
         node make-themes.js
         cd ..
         cp themes-page/themes.html build
-        cd ..
-
-    - name: Build demo
-      run: |
-        cd demo
-        npm install
-        node build.js
         cd ..
 
     - name: Deploy demo
