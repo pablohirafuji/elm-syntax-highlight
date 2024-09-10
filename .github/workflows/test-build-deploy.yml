@@ -58,7 +58,3 @@ jobs:
         folder: demo/build
         clean: true
 
-    - name: Publish
-      uses: dillonkearns/elm-publish-action@master
-      with:
-        github-token: ${{ secrets.ACCESS_TOKEN }}
