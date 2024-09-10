@@ -52,12 +52,11 @@ jobs:
         cd ..
 
     - name: Deploy demo
-      uses: JamesIves/github-pages-deploy-action@releases/v3
+      uses: JamesIves/github-pages-deploy-action@v4.6.4
       with:
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        BRANCH: gh-pages
-        FOLDER: demo/build
-        CLEAN: true
+        branch: gh-pages
+        folder: demo/build
+        clean: true
 
     - name: Publish
       uses: dillonkearns/elm-publish-action@master
