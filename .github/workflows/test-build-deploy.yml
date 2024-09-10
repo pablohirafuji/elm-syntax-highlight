@@ -41,7 +41,7 @@ jobs:
         elm make Main.elm --output elm-themes.js
         node make-themes.js
         cd ..
-        cp themes-page/themes.html public
+        cp themes-page/themes.html build
         cd ..
 
     - name: Build demo
