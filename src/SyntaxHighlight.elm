@@ -2,7 +2,7 @@ module SyntaxHighlight exposing
     ( HCode
     , toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
     , Highlight(..), highlightLines
-    , css, elm, javascript, python, sql, xml, json, nix, noLang
+    , css, elm, javascript, python, sql, xml, json, nix, kotlin, noLang
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
@@ -27,7 +27,7 @@ module SyntaxHighlight exposing
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs css, elm, javascript, python, sql, xml, json, nix, noLang
+@docs css, elm, javascript, python, sql, xml, json, nix, kotlin, noLang
 
 
 ## Themes
@@ -53,6 +53,7 @@ import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Json as Json
 import SyntaxHighlight.Language.Nix as Nix
+import SyntaxHighlight.Language.Kotlin as Kotlin
 import SyntaxHighlight.Language.NoLang as NoLang
 import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
@@ -173,6 +174,14 @@ json =
 nix : String -> Result (List Parser.DeadEnd) HCode
 nix =
     Nix.toLines
+        >> Result.map HCode
+
+
+{-| Parse Kotlin syntax.
+-}
+kotlin : String -> Result (List Parser.DeadEnd) HCode
+kotlin =
+    Kotlin.toLines
         >> Result.map HCode
 
 
