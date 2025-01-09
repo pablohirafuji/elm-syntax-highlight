@@ -12,6 +12,7 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 - SQL (Thanks [@oschmid](https://github.com/oschmid)!)
 - JSON
 - Nix (Thanks [@anddani](https://github.com/anddani)!)
+- Kotlin (Thanks [@anddani](https://github.com/anddani)!)
 
 And there is a `noLang` generic option for when the language is unknown (Thanks [@Anton-4](https://github.com/Anton-4)!).
 
