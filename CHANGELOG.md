@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.6.0
+
+Add Kotlin language support (#27). Thanks @anddani!
+
 ### 3.5.0
 
 Add Nix language support (#23). Thanks @anddani!
