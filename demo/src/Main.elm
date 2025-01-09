@@ -77,6 +77,7 @@ initLanguagesModel =
         , ( "Sql", initLanguageModel sqlExample )
         , ( "Json", initLanguageModel jsonExample )
         , ( "Nix", initLanguageModel nixExample )
+        , ( "Kotlin", initLanguageModel kotlinExample )
         , ( "NoLang", initLanguageModel noLangExample )
         ]
 
@@ -261,6 +262,32 @@ pkgs.dockerTools.buildLayeredImage { # helper to build Docker image
   name = "nix-hello";                # give docker image a name
   tag = "latest";                    # provide a tag
   contents = [ pkgs.hello ];         # packages in docker image
+}
+"""
+
+
+kotlinExample : String
+kotlinExample =
+    """package com.example.hello
+
+import kotlinx.coroutines.delay
+
+sealed class Result<S, E> {
+    data class Ok<S, Nothing>(val value: S) : Result<S, Nothing>()
+    data class Err<Nothing, E>(val error: E) : Result<Nothing, E>()
+}
+
+// Gets a number but might fail
+suspend fun getNumber(): Result<Int, String> {
+    delay(1000)
+    return Result.Ok(42)
+}
+
+suspend fun main(args: Array<String>) {
+    when (val numberResult = getNumber()) {
+        is Result.Ok -> println("Success: ${numberResult.value}")
+        is Result.Err -> println("Error: ${numberResult.value}")
+    }
 }
 """
 
@@ -464,6 +491,7 @@ view model =
             , viewLanguage "Sql" toHtmlSql model
             , viewLanguage "Json" toHtmlJson model
             , viewLanguage "Nix" toHtmlNix model
+            , viewLanguage "Kotlin" toHtmlKotlin model
             , viewLanguage "NoLang" toHtmlNoLang model
             , viewOptions model
             ]
@@ -606,6 +634,11 @@ toHtmlJson =
 toHtmlNix : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNix =
     toHtml SH.nix
+
+
+toHtmlKotlin : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlKotlin =
+    toHtml SH.kotlin
 
 
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
