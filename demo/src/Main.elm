@@ -78,6 +78,7 @@ initLanguagesModel =
         , ( "Json", initLanguageModel jsonExample )
         , ( "Nix", initLanguageModel nixExample )
         , ( "Kotlin", initLanguageModel kotlinExample )
+        , ( "Go", initLanguageModel goExample )
         , ( "NoLang", initLanguageModel noLangExample )
         ]
 
@@ -291,6 +292,40 @@ suspend fun main(args: Array<String>) {
 }
 """
 
+goExample : String
+goExample =
+    """package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+
+    c1 := make(chan string)
+    c2 := make(chan string)
+
+    go func() {
+        time.Sleep(1 * time.Second)
+        c1 <- "one"
+    }()
+    go func() {
+        time.Sleep(2 * time.Second)
+        c2 <- "two"
+    }()
+
+    for i := 0; i < 2; i++ {
+        select {
+        case msg1 := <-c1:
+            fmt.Println("received", msg1)
+        case msg2 := <-c2:
+            fmt.Println("received", msg2)
+        }
+    }
+}
+"""
+
 
 noLangExample : String
 noLangExample =
@@ -492,6 +527,7 @@ view model =
             , viewLanguage "Json" toHtmlJson model
             , viewLanguage "Nix" toHtmlNix model
             , viewLanguage "Kotlin" toHtmlKotlin model
+            , viewLanguage "Go" toHtmlGo model
             , viewLanguage "NoLang" toHtmlNoLang model
             , viewOptions model
             ]
@@ -640,6 +676,10 @@ toHtmlKotlin : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlKotlin =
     toHtml SH.kotlin
 
+
+toHtmlGo : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlGo =
+    toHtml SH.go
 
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNoLang =

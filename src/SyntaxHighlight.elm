@@ -2,7 +2,7 @@ module SyntaxHighlight exposing
     ( HCode
     , toBlockHtml, toInlineHtml, toStaticBlockHtml, toStaticInlineHtml
     , Highlight(..), highlightLines
-    , css, elm, javascript, python, sql, xml, json, nix, kotlin, noLang
+    , css, elm, javascript, python, sql, xml, json, nix, kotlin, go, noLang
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
@@ -27,7 +27,7 @@ module SyntaxHighlight exposing
 
 Error while parsing should not happen. If it happens, please [open an issue](https://github.com/pablohirafuji/elm-syntax-highlight/issues) with the code that gives the error and the language.
 
-@docs css, elm, javascript, python, sql, xml, json, nix, kotlin, noLang
+@docs css, elm, javascript, python, sql, xml, json, nix, kotlin, go, noLang
 
 
 ## Themes
@@ -50,10 +50,11 @@ import Html exposing (Html, text)
 import Parser
 import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
+import SyntaxHighlight.Language.Go as Go
 import SyntaxHighlight.Language.Javascript as Javascript
 import SyntaxHighlight.Language.Json as Json
-import SyntaxHighlight.Language.Nix as Nix
 import SyntaxHighlight.Language.Kotlin as Kotlin
+import SyntaxHighlight.Language.Nix as Nix
 import SyntaxHighlight.Language.NoLang as NoLang
 import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
@@ -150,6 +151,14 @@ css =
 python : String -> Result (List Parser.DeadEnd) HCode
 python =
     Python.toLines
+        >> Result.map HCode
+
+
+{-| Parse Go syntax.
+-}
+go : String -> Result (List Parser.DeadEnd) HCode
+go =
+    Go.toLines
         >> Result.map HCode
 
 
