@@ -8,21 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
-
-    - name: Setup Elm
-      uses: jorelali/setup-elm@v1
-      with:
-        elm-version: 0.19.1
-
-    - uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
 
     - uses: actions/cache@v4
       id: elm-cache
@@ -30,31 +18,22 @@ jobs:
         path: ~/.elm
         key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
 
-    - name: Test
-      run: |
-        npm install elm-test@0.19.1-revision9
-        node node_modules/elm-test/bin/elm-test
+    - uses: cachix/install-nix-action@v27
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build demo
-      run: |
-        cd demo
-        npm install
-        node build.js
-        cd ..
+      run: nix develop --command build-demo
 
     - name: Build themes page
-      run: |
-        cd demo/themes-page
-        elm make Main.elm --output elm-themes.js
-        node make-themes.js
-        cd ..
-        cp themes-page/themes.html build
-        cd ..
+      run: nix develop --command build-themes
+
+    - name: Test
+      run: nix develop --command elm-test
 
     - name: Deploy demo
-      uses: JamesIves/github-pages-deploy-action@v4.6.4
+      uses: JamesIves/github-pages-deploy-action@v4
       with:
         branch: gh-pages
         folder: demo/build
         clean: true
-
