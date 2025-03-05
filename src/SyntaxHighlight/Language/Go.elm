@@ -59,6 +59,12 @@ mainLoop revTokens =
             |> getChompedString
             |> andThen (keywordParser revTokens)
             |> map Loop
+
+        -- TODO: Unknown token found, ignore until the end of the line
+        , chompIfThenWhile (isLineBreak >> not)
+            |> getChompedString
+            |> andThen (\str -> succeed (( T.Normal, str ) :: revTokens))
+            |> map Loop
         , succeed (Done revTokens)
         ]
 
