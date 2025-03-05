@@ -22,14 +22,14 @@ jobs:
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Test
+      run: nix develop --command elm-test
+
     - name: Build demo
       run: nix develop --command build-demo
 
     - name: Build themes page
       run: nix develop --command build-themes
-
-    - name: Test
-      run: nix develop --command elm-test
 
     - name: Deploy demo
       uses: JamesIves/github-pages-deploy-action@v4
