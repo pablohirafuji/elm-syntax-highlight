@@ -13,6 +13,7 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 - JSON
 - Nix (Thanks [@anddani](https://github.com/anddani)!)
 - Kotlin (Thanks [@anddani](https://github.com/anddani)!)
+- Go (Thanks [@ahmedakef](https://github.com/ahmedakef)!)
 
 And there is a `noLang` generic option for when the language is unknown (Thanks [@Anton-4](https://github.com/Anton-4)!).
 

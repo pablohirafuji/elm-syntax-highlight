@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.7.0
+
+Add Go language support (#28). Thanks @ahmedakef!
+
 ### 3.6.0
 
 Add Kotlin language support (#27). Thanks @anddani!
