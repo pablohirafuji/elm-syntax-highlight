@@ -483,8 +483,7 @@ header =
     h1 []
         [ text "Elm Syntax Highlight"
         , text " "
-        , small []
-            [ text "v3.7.0" ]
+        , small [] [ text "v3.7.1" ]
         ]
 
 

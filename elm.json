@@ -3,7 +3,7 @@
     "name": "pablohirafuji/elm-syntax-highlight",
     "summary": "Syntax highlighting in Elm",
     "license": "Apache-2.0",
-    "version": "3.7.0",
+    "version": "3.7.1",
     "exposed-modules": [
         "SyntaxHighlight"
     ],
