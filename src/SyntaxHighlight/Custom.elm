@@ -107,13 +107,13 @@ setFragmentClasses classes (Fragment fragment_) =
 -- CUSTOM STYLE
 
 
-defaultStyle : Style
-defaultStyle =
+styleDefault : Style
+styleDefault =
     Style Style.Default
 
 
-commentStyle : Style
-commentStyle =
+styleComment : Style
+styleComment =
     Style Style.Comment
 
 
