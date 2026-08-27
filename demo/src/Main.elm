@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onAnimationFrame)
+import Custom
 import Dict exposing (Dict)
 import Html exposing (Html, a, button, code, div, h1, input, label, li, main_, node, option, p, pre, select, small, text, textarea, ul)
 import Html.Attributes exposing (checked, class, classList, href, id, placeholder, selected, spellcheck, style, type_, value)
@@ -10,6 +11,7 @@ import Html.Lazy
 import Json.Decode as Json
 import Parser
 import SyntaxHighlight as SH exposing (Theme)
+import SyntaxHighlight.Custom
 
 
 main : Program () Model Msg
@@ -80,6 +82,7 @@ initLanguagesModel =
         , ( "Kotlin", initLanguageModel kotlinExample )
         , ( "Go", initLanguageModel goExample )
         , ( "NoLang", initLanguageModel noLangExample )
+        , ( "Custom parser", initLanguageModel customExample )
         ]
 
 
@@ -292,6 +295,7 @@ suspend fun main(args: Array<String>) {
 }
 """
 
+
 goExample : String
 goExample =
     """package main
@@ -347,6 +351,11 @@ while True {
     print(toString(42/0))
 }
 """
+
+
+customExample : String
+customExample =
+    """1 + 34 * 5 / 6"""
 
 
 
@@ -521,6 +530,7 @@ view model =
             , viewLanguage "Javascript" toHtmlJavascript model
             , viewLanguage "Xml" toHtmlXml model
             , viewLanguage "Css" toHtmlCss model
+            , viewLanguage "Css (custom)" toHtmlCss model
             , viewLanguage "Python" toHtmlPython model
             , viewLanguage "Sql" toHtmlSql model
             , viewLanguage "Json" toHtmlJson model
@@ -528,6 +538,7 @@ view model =
             , viewLanguage "Kotlin" toHtmlKotlin model
             , viewLanguage "Go" toHtmlGo model
             , viewLanguage "NoLang" toHtmlNoLang model
+            , viewLanguage "Custom parser" toHtmlCustom model
             , viewOptions model
             ]
         ]
@@ -651,6 +662,11 @@ toHtmlCss =
     toHtml SH.css
 
 
+toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlCustom =
+    toHtml (SyntaxHighlight.Custom.customSyntax Custom.parser)
+
+
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlPython =
     toHtml SH.python
@@ -679,6 +695,7 @@ toHtmlKotlin =
 toHtmlGo : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlGo =
     toHtml SH.go
+
 
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNoLang =
