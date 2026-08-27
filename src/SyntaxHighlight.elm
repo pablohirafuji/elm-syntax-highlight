@@ -59,7 +59,7 @@ import SyntaxHighlight.Language.NoLang as NoLang
 import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Xml as Xml
-import SyntaxHighlight.Line as Line exposing (Highlight, Line)
+import SyntaxHighlight.Line as Line
 import SyntaxHighlight.Style as Style
 import SyntaxHighlight.Theme as Theme
 import SyntaxHighlight.View as View
@@ -68,7 +68,7 @@ import SyntaxHighlight.View as View
 {-| A highlighted code.
 -}
 type HCode
-    = HCode (List Line)
+    = HCode (List Line.Line)
 
 
 {-| Transform a highlighted code into a Html block.
