@@ -482,7 +482,7 @@ customSyntax parser code =
 line : List Fragment -> Line
 line fragments =
     Line
-        { fragments = fragments |> List.map (\(Fragment fragment) -> fragment)
+        { fragments = fragments |> List.map (\(Fragment fragment_) -> fragment_)
         , highlight = Nothing
         }
 
