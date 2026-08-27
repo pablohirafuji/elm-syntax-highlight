@@ -667,7 +667,7 @@ toHtmlCss =
 
 toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlCustom =
-    toHtml (SyntaxHighlight.Custom.customSyntax CustomSyntax.parser)
+    toHtml (SyntaxHighlight.Custom.fromParser CustomSyntax.parser)
 
 
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg

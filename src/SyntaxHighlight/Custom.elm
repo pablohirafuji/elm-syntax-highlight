@@ -1,4 +1,4 @@
-module SyntaxHighlight.Custom exposing (..)
+module SyntaxHighlight.Custom exposing (Fragment, Line, Style, fragment, fromParser, line, setFragmentClasses, setFragmentStyle, setLineHighlight, style1, style2, style3, style4, style5, style6, style7, styleComment, styleDefault)
 
 {-| -}
 
@@ -9,34 +9,27 @@ import SyntaxHighlight.Line as Line
 import SyntaxHighlight.Style as Style
 
 
-{-| A line of parsed code. Holds information about its `Fragment`s and if is
-highlighted in any way.
--}
-type Line
-    = Line Line.Line
-
-
-{-| One single styled portion of a line of parsed code. Holds information about
-the text being styled, the style and additional class to be applied.
--}
-type Fragment
-    = Fragment Line.Fragment
-
-
-type Style
-    = Style Style.Required
-
-
 {-| Use a parser from `elm/parser` to define your own syntax. Your parser must
 produce a list of `Line` values out of the code string.
 -}
-customSyntax : Parser (List Line) -> String -> Result (List Parser.DeadEnd) HCode
-customSyntax parser code =
+fromParser : Parser (List Line) -> String -> Result (List Parser.DeadEnd) HCode
+fromParser parser code =
     Parser.run parser code
         |> Result.map
             (\lines ->
                 HCode (lines |> List.map (\(Line line_) -> line_))
             )
+
+
+
+-- LINE
+
+
+{-| A line of parsed code. Holds information about its `Fragment`s and if is
+highlighted in any way.
+-}
+type Line
+    = Line Line.Line
 
 
 {-| Constructs one line of a `customSyntax` parser, out of a list of `Fragment`
@@ -74,6 +67,17 @@ setLineHighlight highlight_ (Line line_) =
     Line { line_ | highlight = convertedHighlight }
 
 
+
+-- FRAGMENT
+
+
+{-| One single styled portion of a line of parsed code. Holds information about
+the text being styled, the style and additional class to be applied.
+-}
+type Fragment
+    = Fragment Line.Fragment
+
+
 {-| Constructs a `Fragment` value out of a `String`, which is one part of a
 `Line` for a custom syntax. Check the `customSyntax` function for more details.
 -}
@@ -104,7 +108,11 @@ setFragmentClasses classes (Fragment fragment_) =
 
 
 
--- CUSTOM STYLE
+-- STYLE
+
+
+type Style
+    = Style Style.Required
 
 
 styleDefault : Style
