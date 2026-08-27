@@ -6,7 +6,7 @@ module SyntaxHighlight exposing
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
-    , Fragment, Line, addClassesToFragment, customSyntax, highlightLine, line, styleFragment
+    , Fragment, Line, customSyntax, fragment, line, setFragmentClasses, setFragmentStyle, setLineHighlight
     )
 
 {-| Syntax highlighting in Elm.
@@ -487,8 +487,8 @@ line fragments =
         }
 
 
-highlightLine : Maybe Highlight -> Line -> Line
-highlightLine highlight_ (Line line_) =
+setLineHighlight : Maybe Highlight -> Line -> Line
+setLineHighlight highlight_ (Line line_) =
     let
         convertedHighlight =
             highlight_
@@ -517,11 +517,11 @@ fragment text =
         }
 
 
-styleFragment : Style -> Fragment -> Fragment
-styleFragment (Style style) (Fragment fragment_) =
+setFragmentStyle : Style -> Fragment -> Fragment
+setFragmentStyle (Style style) (Fragment fragment_) =
     Fragment { fragment_ | requiredStyle = style }
 
 
-addClassesToFragment : String -> Fragment -> Fragment
-addClassesToFragment classes (Fragment fragment_) =
+setFragmentClasses : String -> Fragment -> Fragment
+setFragmentClasses classes (Fragment fragment_) =
     Fragment { fragment_ | additionalClass = classes }
