@@ -15,42 +15,7 @@ type Token
 parser : Parser (List Sh.Line)
 parser =
     Parser.loop [] parserLoop
-        |> Parser.map
-            (\tokens ->
-                let
-                    ( lastLineFragmentsRev, otherLinesRev ) =
-                        tokens
-                            |> List.foldl
-                                (\token ( accFragmentsRev, linesRev ) ->
-                                    let
-                                        addFragment text style =
-                                            ( (Sh.fragment text |> Sh.setFragmentStyle style)
-                                                :: accFragmentsRev
-                                            , linesRev
-                                            )
-                                    in
-                                    case token of
-                                        LineBreak ->
-                                            ( []
-                                            , Sh.line (List.reverse accFragmentsRev) :: linesRev
-                                            )
-
-                                        Number text ->
-                                            addFragment text Sh.style1
-
-                                        Operator text ->
-                                            addFragment text Sh.style2
-
-                                        Parenthesis text ->
-                                            addFragment text Sh.style3
-
-                                        Other text ->
-                                            addFragment text Sh.styleDefault
-                                )
-                                ( [], [] )
-                in
-                List.reverse (Sh.line (List.reverse lastLineFragmentsRev) :: otherLinesRev)
-            )
+        |> Parser.map tokensToLines
 
 
 parserLoop : List Token -> Parser (Parser.Step (List Token) (List Token))
@@ -63,8 +28,48 @@ parserLoop revTokens =
         ]
 
 
+tokensToLines : List Token -> List Sh.Line
+tokensToLines tokens =
+    let
+        accumulateLines : Token -> ( List Sh.Fragment, List Sh.Line ) -> ( List Sh.Fragment, List Sh.Line )
+        accumulateLines token ( accFragmentsRev, linesRev ) =
+            let
+                addFragment text style =
+                    ( (Sh.fragment text |> Sh.setFragmentStyle style)
+                        :: accFragmentsRev
+                    , linesRev
+                    )
+            in
+            case token of
+                LineBreak ->
+                    ( []
+                    , Sh.line (List.reverse accFragmentsRev) :: linesRev
+                    )
 
--- TOKEN PARSERS
+                Number text ->
+                    addFragment text Sh.style1
+
+                Operator text ->
+                    addFragment text Sh.style2
+
+                Parenthesis text ->
+                    addFragment text Sh.style3
+
+                Other text ->
+                    addFragment text Sh.styleDefault
+
+        ( lastLineFragmentsRev, otherLinesRev ) =
+            tokens
+                |> List.foldl accumulateLines ( [], [] )
+
+        lastLine =
+            Sh.line (List.reverse lastLineFragmentsRev)
+    in
+    List.reverse (lastLine :: otherLinesRev)
+
+
+
+-- TOKEN PARSING
 
 
 number : Parser Token
