@@ -1,4 +1,4 @@
-module Custom exposing (parser)
+module CustomSyntax exposing (parser)
 
 import Parser exposing ((|.), (|=), Parser)
 import SyntaxHighlight.Custom as Sh

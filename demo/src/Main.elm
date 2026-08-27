@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onAnimationFrame)
-import Custom
+import CustomSyntax
 import Dict exposing (Dict)
 import Html exposing (Html, a, button, code, div, h1, input, label, li, main_, node, option, p, pre, select, small, text, textarea, ul)
 import Html.Attributes exposing (checked, class, classList, href, id, placeholder, selected, spellcheck, style, type_, value)
@@ -667,7 +667,7 @@ toHtmlCss =
 
 toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlCustom =
-    toHtml (SyntaxHighlight.Custom.customSyntax Custom.parser)
+    toHtml (SyntaxHighlight.Custom.customSyntax CustomSyntax.parser)
 
 
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
