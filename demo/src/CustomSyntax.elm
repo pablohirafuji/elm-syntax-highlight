@@ -56,10 +56,10 @@ tokensToLines tokens =
                     addFragment text Sh.style1
 
                 Operator text ->
-                    addFragment text Sh.style2
+                    addFragment text Sh.style3
 
                 Parenthesis text ->
-                    addFragment text Sh.style3
+                    addFragment text Sh.style4
 
                 Other text ->
                     addFragment text Sh.styleDefault
