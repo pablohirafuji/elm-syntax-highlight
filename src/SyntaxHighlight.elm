@@ -6,6 +6,7 @@ module SyntaxHighlight exposing
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
+    , Fragment, Line, addClassesToFragment, customSyntax, highlightLine, line, styleFragment
     )
 
 {-| Syntax highlighting in Elm.
@@ -47,7 +48,7 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 -}
 
 import Html exposing (Html, text)
-import Parser
+import Parser exposing (Parser)
 import SyntaxHighlight.Language.Css as Css
 import SyntaxHighlight.Language.Elm as Elm
 import SyntaxHighlight.Language.Go as Go
@@ -442,3 +443,85 @@ toCustomFragment options { text, requiredStyle, additionalClass } =
 
         Style.Style7 ->
             options.style7 text
+
+
+
+-- CUSTOM SYNTAX
+
+
+{-| A line of parsed code. Holds information about its `Fragment`s and if is
+highlighted in any way.
+-}
+type Line
+    = Line Line.Line
+
+
+{-| One single styled portion of a line of parsed code. Holds information about
+the text being styled, the style and additional class to be applied.
+-}
+type Fragment
+    = Fragment Line.Fragment
+
+
+type Style
+    = Style Style.Required
+
+
+{-| Use a parser from `elm/parser` to define your own syntax. Your parser must
+produce a list of `Line` values.
+-}
+customSyntax : Parser (List Line) -> String -> Result (List Parser.DeadEnd) HCode
+customSyntax parser code =
+    Parser.run parser code
+        |> Result.map
+            (\lines ->
+                HCode (lines |> List.map (\(Line line_) -> line_))
+            )
+
+
+line : List Fragment -> Line
+line fragments =
+    Line
+        { fragments = fragments |> List.map (\(Fragment fragment) -> fragment)
+        , highlight = Nothing
+        }
+
+
+highlightLine : Maybe Highlight -> Line -> Line
+highlightLine highlight_ (Line line_) =
+    let
+        convertedHighlight =
+            highlight_
+                |> Maybe.map
+                    (\hl ->
+                        case hl of
+                            Highlight ->
+                                Line.Normal
+
+                            Add ->
+                                Line.Add
+
+                            Del ->
+                                Line.Del
+                    )
+    in
+    Line { line_ | highlight = convertedHighlight }
+
+
+fragment : String -> Fragment
+fragment text =
+    Fragment
+        { text = text
+        , requiredStyle = Style.Default
+        , additionalClass = ""
+        }
+
+
+styleFragment : Style -> Fragment -> Fragment
+styleFragment (Style style) (Fragment fragment_) =
+    Fragment { fragment_ | requiredStyle = style }
+
+
+addClassesToFragment : String -> Fragment -> Fragment
+addClassesToFragment classes (Fragment fragment_) =
+    Fragment { fragment_ | additionalClass = classes }
