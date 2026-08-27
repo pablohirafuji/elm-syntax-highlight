@@ -468,7 +468,7 @@ type Style
 
 
 {-| Use a parser from `elm/parser` to define your own syntax. Your parser must
-produce a list of `Line` values.
+produce a list of `Line` values out of the code string.
 -}
 customSyntax : Parser (List Line) -> String -> Result (List Parser.DeadEnd) HCode
 customSyntax parser code =
@@ -479,6 +479,9 @@ customSyntax parser code =
             )
 
 
+{-| Constructs one line of a `customSyntax` parser, out of a list of `Fragment`
+values, which you can in turn construct using the `fragment` function.
+-}
 line : List Fragment -> Line
 line fragments =
     Line
@@ -487,6 +490,9 @@ line fragments =
         }
 
 
+{-| You can make a `Line` in a custom syntax look highlighted, or as a diff
+addition/deletion, using this function.
+-}
 setLineHighlight : Maybe Highlight -> Line -> Line
 setLineHighlight highlight_ (Line line_) =
     let
@@ -508,6 +514,9 @@ setLineHighlight highlight_ (Line line_) =
     Line { line_ | highlight = convertedHighlight }
 
 
+{-| Constructs a `Fragment` value out of a `String`, which is one part of a
+`Line` for a custom syntax. Check the `customSyntax` function for more details.
+-}
 fragment : String -> Fragment
 fragment text =
     Fragment
@@ -517,11 +526,18 @@ fragment text =
         }
 
 
+{-| Sets a specific style to a `Fragment`, which gives it a different color
+depending on the theme used.
+-}
 setFragmentStyle : Style -> Fragment -> Fragment
 setFragmentStyle (Style style) (Fragment fragment_) =
     Fragment { fragment_ | requiredStyle = style }
 
 
+{-| You can optionally use this function to give a `Fragment` one or more custom
+CSS classes (separated by spaces), if you want more control over how you style
+your custom syntax.
+-}
 setFragmentClasses : String -> Fragment -> Fragment
 setFragmentClasses classes (Fragment fragment_) =
     Fragment { fragment_ | additionalClass = classes }
