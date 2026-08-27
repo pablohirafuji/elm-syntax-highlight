@@ -355,7 +355,10 @@ while True {
 
 customExample : String
 customExample =
-    """1 + 34 * 5 / 6"""
+    """1 + 2
+256 - (5 / 6)
+8 * 8
+"""
 
 
 
