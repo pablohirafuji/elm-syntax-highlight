@@ -6,7 +6,7 @@ module SyntaxHighlight exposing
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
-    , Fragment, Line, customSyntax, fragment, line, setFragmentClasses, setFragmentStyle, setLineHighlight
+    , Fragment, Line, commentStyle, customSyntax, defaultStyle, fragment, line, setFragmentClasses, setFragmentStyle, setLineHighlight, style1, style2, style3, style4, style5, style6, style7
     )
 
 {-| Syntax highlighting in Elm.
@@ -541,3 +541,52 @@ your custom syntax.
 setFragmentClasses : String -> Fragment -> Fragment
 setFragmentClasses classes (Fragment fragment_) =
     Fragment { fragment_ | additionalClass = classes }
+
+
+
+-- CUSTOM STYLE
+
+
+defaultStyle : Style
+defaultStyle =
+    Style Style.Default
+
+
+commentStyle : Style
+commentStyle =
+    Style Style.Comment
+
+
+style1 : Style
+style1 =
+    Style Style.Style1
+
+
+style2 : Style
+style2 =
+    Style Style.Style2
+
+
+style3 : Style
+style3 =
+    Style Style.Style3
+
+
+style4 : Style
+style4 =
+    Style Style.Style4
+
+
+style5 : Style
+style5 =
+    Style Style.Style5
+
+
+style6 : Style
+style6 =
+    Style Style.Style6
+
+
+style7 : Style
+style7 =
+    Style Style.Style7
