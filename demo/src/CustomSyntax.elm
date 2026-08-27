@@ -1,6 +1,7 @@
-module CustomSyntax exposing (parser)
+module CustomSyntax exposing (syntax)
 
 import Parser exposing ((|.), (|=), Parser)
+import SyntaxHighlight exposing (HCode)
 import SyntaxHighlight.Custom as Sh
 
 
@@ -10,6 +11,11 @@ type Token
     | Parenthesis String
     | LineBreak
     | Other String
+
+
+syntax : String -> Result (List Parser.DeadEnd) HCode
+syntax =
+    Sh.fromParser parser
 
 
 parser : Parser (List Sh.Line)

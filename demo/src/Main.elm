@@ -11,7 +11,6 @@ import Html.Lazy
 import Json.Decode as Json
 import Parser
 import SyntaxHighlight as SH exposing (Theme)
-import SyntaxHighlight.Custom
 
 
 main : Program () Model Msg
@@ -667,7 +666,7 @@ toHtmlCss =
 
 toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlCustom =
-    toHtml (SyntaxHighlight.Custom.fromParser CustomSyntax.parser)
+    toHtml CustomSyntax.syntax
 
 
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
