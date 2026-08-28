@@ -9,7 +9,6 @@ type Token
     = Number String
     | Operator String
     | Parenthesis String
-    | LineBreak
     | Other String
 
 
@@ -29,7 +28,7 @@ parserLoop revTokens =
     Parser.oneOf
         [ Parser.end
             |> Parser.map (\() -> Parser.Done (List.reverse revTokens))
-        , Parser.oneOf [ lineBreak, number, operator, parenthesis, other ]
+        , Parser.oneOf [ number, operator, parenthesis, other ]
             |> Parser.map (\token -> Parser.Loop (token :: revTokens))
         ]
 
@@ -48,9 +47,6 @@ tokenToFragment token =
 
         Other text ->
             fragment text SH.styleDefault
-
-        LineBreak ->
-            SH.lineBreak Nothing
 
 
 fragment : String -> SH.Style -> SH.Fragment
@@ -95,17 +91,6 @@ isParenthesis char =
     char == '(' || char == ')'
 
 
-lineBreak : Parser Token
-lineBreak =
-    Parser.succeed LineBreak
-        |. Parser.chompIf isLineBreak
-
-
-isLineBreak : Char -> Bool
-isLineBreak char =
-    char == '\n'
-
-
 other : Parser Token
 other =
     chars
@@ -113,7 +98,6 @@ other =
             not (isNumber char)
                 && not (isOperator char)
                 && not (isParenthesis char)
-                && not (isLineBreak char)
         )
         |> Parser.map Other
 
