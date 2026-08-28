@@ -44,7 +44,7 @@ testFromParsedFragments testName fragments checkLines =
                     checkLines lines
 
                 _ ->
-                    fail "TODO"
+                    fail "`fromParsedFragments` returned an unexpected value"
 
 
 fromParsedFragments : List Custom.Fragment -> Result (List Parser.DeadEnd) HCode
