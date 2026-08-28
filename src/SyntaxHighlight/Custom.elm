@@ -152,6 +152,7 @@ lineBreaksAsFragments f =
             String.split "\n" lf.text
                 |> List.map (\text -> Fragment { lf | text = text })
                 |> List.intersperse (Newline Nothing)
+                |> List.filter (isEmptyFragment >> not)
 
         Newline _ ->
             [ f ]
@@ -179,6 +180,16 @@ fragmentsIntoLines accLine accLines fragments =
                 { accLine | fragments = lf :: accLine.fragments }
                 accLines
                 restFragments
+
+
+isEmptyFragment : Fragment -> Bool
+isEmptyFragment f =
+    case f of
+        Fragment lf ->
+            lf.text == ""
+
+        Newline _ ->
+            False
 
 
 emptyLine : Line
