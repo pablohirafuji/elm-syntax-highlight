@@ -10,7 +10,7 @@ import SyntaxHighlight.Style as Style
 
 
 {-| Use a parser from `elm/parser` to define your own syntax. Your parser must
-produce a list of `Line` values out of the code string.
+produce a list of `Fragment` values out of the code string.
 -}
 fromParser : Parser (List Fragment) -> String -> Result (List Parser.DeadEnd) HCode
 fromParser parser code =
@@ -36,8 +36,9 @@ type Fragment
     | Newline (Maybe Highlight)
 
 
-{-| Constructs a `Fragment` value out of a `String`, which is one part of a
-`Line` for a custom syntax. Check the `customSyntax` function for more details.
+{-| Constructs a `Fragment` value out of a part of the code you're parsing.
+Typically should represent one syntactic unit in the code. You can add styling
+details to this `Fragment` using `setFragmentStyle` and `setFragmentClasses`.
 -}
 fragment : String -> Fragment
 fragment text =
@@ -48,6 +49,10 @@ fragment text =
         }
 
 
+{-| A special kind of `Fragment`: a way to insert an explicit break into a new
+line when parsing your code. You can optionally pass it a `Highlight` value to
+change how the following line is rendered.
+-}
 newline : Maybe Highlight -> Fragment
 newline hl =
     Newline hl
@@ -137,6 +142,9 @@ style7 =
 -- INTERNAL
 
 
+{-| Splits a fragment on every `'\n'` character, and puts `LineBreak Nothing`
+values in between.
+-}
 lineBreaksAsFragments : Fragment -> List Fragment
 lineBreaksAsFragments f =
     case f of
@@ -149,6 +157,10 @@ lineBreaksAsFragments f =
             [ f ]
 
 
+{-| Splits fragments into lines where `Newline` values are found. It's a
+recursive algorithm that takes an initial empty `Line`, a list of accumulated
+lines, and finally the fragments we're going to place into lines.
+-}
 fragmentsIntoLines : Line -> List Line -> List Fragment -> List Line
 fragmentsIntoLines accLine accLines fragments =
     case fragments of
