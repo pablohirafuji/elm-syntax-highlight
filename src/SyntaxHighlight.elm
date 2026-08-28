@@ -6,6 +6,7 @@ module SyntaxHighlight exposing
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
+    , toHCode
     )
 
 {-| Syntax highlighting in Elm.
@@ -44,6 +45,11 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 
 @docs CustomTransform, toCustom
 
+
+## Internal
+
+@docs toHCode
+
 -}
 
 import Html exposing (Html, text)
@@ -60,7 +66,7 @@ import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Type as T
 import SyntaxHighlight.Language.Xml as Xml
-import SyntaxHighlight.Line as Line
+import SyntaxHighlight.Line as Line exposing (Line)
 import SyntaxHighlight.Style as Style
 import SyntaxHighlight.Theme as Theme
 import SyntaxHighlight.View as View
@@ -68,15 +74,15 @@ import SyntaxHighlight.View as View
 
 {-| A highlighted code.
 -}
-type alias HCode =
-    T.HCode
+type HCode
+    = HCode T.HCode
 
 
 {-| Transform a highlighted code into a Html block.
 The `Maybe Int` argument is for showing or not line count and, if so, starting from what number.
 -}
 toBlockHtml : Maybe Int -> HCode -> Html msg
-toBlockHtml maybeStart (T.HCode lines) =
+toBlockHtml maybeStart (HCode (T.HCode lines)) =
     View.toBlockHtml maybeStart lines
 
 
@@ -97,21 +103,21 @@ toBlockHtml maybeStart (T.HCode lines) =
 
 -}
 toInlineHtml : HCode -> Html msg
-toInlineHtml (T.HCode lines) =
+toInlineHtml (HCode (T.HCode lines)) =
     View.toInlineHtml lines
 
 
 {-| Transform a highlighted code into a static (pure text) Html block. The `Maybe Int` argument is for showing or not line count and, if so, starting from what number.
 -}
 toStaticBlockHtml : Maybe Int -> HCode -> String
-toStaticBlockHtml maybeStart (T.HCode lines) =
+toStaticBlockHtml maybeStart (HCode (T.HCode lines)) =
     View.toStaticBlockHtml maybeStart lines
 
 
 {-| Transform a highlighted code into static (pure text) inline Html.
 -}
 toStaticInlineHtml : HCode -> String
-toStaticInlineHtml (T.HCode lines) =
+toStaticInlineHtml (HCode (T.HCode lines)) =
     View.toStaticInlineHtml lines
 
 
@@ -120,7 +126,7 @@ toStaticInlineHtml (T.HCode lines) =
 elm : String -> Result (List Parser.DeadEnd) HCode
 elm =
     Elm.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse XML syntax.
@@ -128,7 +134,7 @@ elm =
 xml : String -> Result (List Parser.DeadEnd) HCode
 xml =
     Xml.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse Javascript syntax.
@@ -136,7 +142,7 @@ xml =
 javascript : String -> Result (List Parser.DeadEnd) HCode
 javascript =
     Javascript.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse CSS syntax.
@@ -144,7 +150,7 @@ javascript =
 css : String -> Result (List Parser.DeadEnd) HCode
 css =
     Css.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse Python syntax.
@@ -152,7 +158,7 @@ css =
 python : String -> Result (List Parser.DeadEnd) HCode
 python =
     Python.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse Go syntax.
@@ -160,7 +166,7 @@ python =
 go : String -> Result (List Parser.DeadEnd) HCode
 go =
     Go.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse SQL syntax.
@@ -168,7 +174,7 @@ go =
 sql : String -> Result (List Parser.DeadEnd) HCode
 sql =
     Sql.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse JSON syntax.
@@ -176,7 +182,7 @@ sql =
 json : String -> Result (List Parser.DeadEnd) HCode
 json =
     Json.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse Nix syntax.
@@ -184,7 +190,7 @@ json =
 nix : String -> Result (List Parser.DeadEnd) HCode
 nix =
     Nix.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse Kotlin syntax.
@@ -192,7 +198,7 @@ nix =
 kotlin : String -> Result (List Parser.DeadEnd) HCode
 kotlin =
     Kotlin.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| Parse code from an unknown language with generic styling.
@@ -200,7 +206,7 @@ kotlin =
 noLang : String -> Result (List Parser.DeadEnd) HCode
 noLang =
     NoLang.toLines
-        >> Result.map T.HCode
+        >> Result.map toHCode
 
 
 {-| A theme defines the background and syntax colors.
@@ -277,7 +283,7 @@ highlight from the line range.
 Negative indexes are taken starting from the _end_ of the list.
 -}
 highlightLines : Maybe Highlight -> Int -> Int -> HCode -> HCode
-highlightLines maybeHighlight start end (T.HCode lines) =
+highlightLines maybeHighlight start end (HCode (T.HCode lines)) =
     let
         maybeHighlight_ =
             case maybeHighlight of
@@ -294,7 +300,7 @@ highlightLines maybeHighlight start end (T.HCode lines) =
                     Just Line.Del
     in
     Line.highlightLines maybeHighlight_ start end lines
-        |> T.HCode
+        |> toHCode
 
 
 {-| Console styling options.
@@ -392,7 +398,7 @@ type alias CustomTransform fragment line =
 {-| Transform a highlighted code into a list of anything you want. Each `line` in the list corresponds to a line in the original code.
 -}
 toCustom : CustomTransform fragment line -> HCode -> List line
-toCustom options (T.HCode lines) =
+toCustom options (HCode (T.HCode lines)) =
     List.map
         (\{ highlight, fragments } ->
             List.map (toCustomFragment options) fragments
@@ -443,3 +449,10 @@ toCustomFragment options { text, requiredStyle, additionalClass } =
 
         Style.Style7 ->
             options.style7 text
+
+
+{-| This function is exposed for internal use only.
+-}
+toHCode : List Line -> HCode
+toHCode lines =
+    HCode (T.HCode lines)

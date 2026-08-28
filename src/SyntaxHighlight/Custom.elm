@@ -30,7 +30,7 @@ import SyntaxHighlight.Style as Style
 {-| Use a parser from `elm/parser` to define your own syntax. Your parser must
 produce a list of `Fragment` values out of the code string.
 -}
-fromParser : Parser (List Fragment) -> String -> Result (List Parser.DeadEnd) HCode
+fromParser : Parser (List Fragment) -> String -> Result (List Parser.DeadEnd) SyntaxHighlight.HCode
 fromParser parser code =
     Parser.run parser code
         |> Result.map
@@ -38,7 +38,7 @@ fromParser parser code =
                 fragments
                     |> List.concatMap lineBreaksAsFragments
                     |> fragmentsIntoLines emptyLine []
-                    |> HCode
+                    |> SyntaxHighlight.toHCode
             )
 
 
