@@ -2,7 +2,7 @@ module CustomSyntax exposing (syntax)
 
 import Parser exposing ((|.), (|=), Parser)
 import SyntaxHighlight exposing (HCode)
-import SyntaxHighlight.Custom as Sh
+import SyntaxHighlight.Custom as SH
 
 
 type Token
@@ -15,10 +15,10 @@ type Token
 
 syntax : String -> Result (List Parser.DeadEnd) HCode
 syntax =
-    Sh.fromParser parser
+    SH.fromParser parser
 
 
-parser : Parser (List Sh.Line)
+parser : Parser (List SH.Line)
 parser =
     Parser.loop [] parserLoop
         |> Parser.map tokensToLines
@@ -34,14 +34,14 @@ parserLoop revTokens =
         ]
 
 
-tokensToLines : List Token -> List Sh.Line
+tokensToLines : List Token -> List SH.Line
 tokensToLines tokens =
     let
-        accumulateLines : Token -> ( List Sh.Fragment, List Sh.Line ) -> ( List Sh.Fragment, List Sh.Line )
+        accumulateLines : Token -> ( List SH.Fragment, List SH.Line ) -> ( List SH.Fragment, List SH.Line )
         accumulateLines token ( accFragmentsRev, linesRev ) =
             let
                 addFragment text style =
-                    ( (Sh.fragment text |> Sh.setFragmentStyle style)
+                    ( (SH.fragment text |> SH.setFragmentStyle style)
                         :: accFragmentsRev
                     , linesRev
                     )
@@ -49,27 +49,27 @@ tokensToLines tokens =
             case token of
                 LineBreak ->
                     ( []
-                    , Sh.line (List.reverse accFragmentsRev) :: linesRev
+                    , SH.line (List.reverse accFragmentsRev) :: linesRev
                     )
 
                 Number text ->
-                    addFragment text Sh.style1
+                    addFragment text SH.style1
 
                 Operator text ->
-                    addFragment text Sh.style3
+                    addFragment text SH.style3
 
                 Parenthesis text ->
-                    addFragment text Sh.style4
+                    addFragment text SH.style4
 
                 Other text ->
-                    addFragment text Sh.styleDefault
+                    addFragment text SH.styleDefault
 
         ( lastLineFragmentsRev, otherLinesRev ) =
             tokens
                 |> List.foldl accumulateLines ( [], [] )
 
         lastLine =
-            Sh.line (List.reverse lastLineFragmentsRev)
+            SH.line (List.reverse lastLineFragmentsRev)
     in
     List.reverse (lastLine :: otherLinesRev)
 
