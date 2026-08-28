@@ -1,6 +1,24 @@
-module SyntaxHighlight.Custom exposing (Fragment, Style, fragment, fromParser, newline, setFragmentClasses, setFragmentStyle, style1, style2, style3, style4, style5, style6, style7, styleComment, styleDefault)
+module SyntaxHighlight.Custom exposing
+    ( fromParser
+    , Fragment
+    , fragment, newline, setFragmentStyle, setFragmentClasses
+    , Style
+    , styleDefault, styleComment, style1, style2, style3, style4, style5, style6, style7
+    )
 
-{-| -}
+{-|
+
+@docs fromParser
+
+@docs Fragment
+
+@docs fragment, newline, setFragmentStyle, setFragmentClasses
+
+@docs Style
+
+@docs styleDefault, styleComment, style1, style2, style3, style4, style5, style6, style7
+
+-}
 
 import Parser exposing (Parser)
 import SyntaxHighlight exposing (Highlight(..))
@@ -89,50 +107,60 @@ setFragmentClasses classes f =
 -- STYLE
 
 
+{-| -}
 type Style
     = Style Style.Required
 
 
+{-| -}
 styleDefault : Style
 styleDefault =
     Style Style.Default
 
 
+{-| -}
 styleComment : Style
 styleComment =
     Style Style.Comment
 
 
+{-| -}
 style1 : Style
 style1 =
     Style Style.Style1
 
 
+{-| -}
 style2 : Style
 style2 =
     Style Style.Style2
 
 
+{-| -}
 style3 : Style
 style3 =
     Style Style.Style3
 
 
+{-| -}
 style4 : Style
 style4 =
     Style Style.Style4
 
 
+{-| -}
 style5 : Style
 style5 =
     Style Style.Style5
 
 
+{-| -}
 style6 : Style
 style6 =
     Style Style.Style6
 
 
+{-| -}
 style7 : Style
 style7 =
     Style Style.Style7
