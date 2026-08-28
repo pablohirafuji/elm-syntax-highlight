@@ -17,7 +17,10 @@ fromParser parser code =
     Parser.run parser code
         |> Result.map
             (\fragments ->
-                HCode (fragmentsIntoLines emptyLine [] fragments)
+                fragments
+                    |> List.concatMap splitFragmentOnLineBreaks
+                    |> fragmentsIntoLines emptyLine []
+                    |> HCode
             )
 
 
@@ -134,6 +137,18 @@ style7 =
 -- INTERNAL
 
 
+splitFragmentOnLineBreaks : Fragment -> List Fragment
+splitFragmentOnLineBreaks fragment_ =
+    case fragment_ of
+        Fragment f ->
+            String.split "\n" f.text
+                |> List.map (\text -> Fragment { f | text = text })
+                |> List.intersperse (LineBreak Nothing)
+
+        LineBreak _ ->
+            [ fragment_ ]
+
+
 fragmentsIntoLines : Line -> List Line -> List Fragment -> List Line
 fragmentsIntoLines accLine accLines fragments =
     case fragments of
@@ -148,43 +163,10 @@ fragmentsIntoLines accLine accLines fragments =
                 restFragments
 
         (Fragment f) :: restFragments ->
-            let
-                ( newAccLine, newLines ) =
-                    splitLFragmentOnLineBreaks f
-                        |> placeLFragmentsOnLines accLine []
-            in
-            fragmentsIntoLines newAccLine (newLines ++ accLines) restFragments
-
-
-splitLFragmentOnLineBreaks : Line.Fragment -> List Line.Fragment
-splitLFragmentOnLineBreaks f =
-    String.split "\n" f.text
-        |> List.map (\text -> { f | text = text })
-
-
-placeLFragmentsOnLines : Line -> List Line -> List Line.Fragment -> ( Line, List Line )
-placeLFragmentsOnLines accLine accLines lFragments =
-    let
-        addLastFragment f =
-            { accLine | fragments = f :: accLine.fragments |> List.reverse }
-    in
-    case lFragments of
-        [] ->
-            ( accLine, accLines )
-
-        [ f ] ->
-            -- Last or single fragment = no line break.
-            placeLFragmentsOnLines
+            fragmentsIntoLines
                 { accLine | fragments = f :: accLine.fragments }
                 accLines
-                []
-
-        f :: fNext :: restLFragments ->
-            -- Two fragments = line break.
-            placeLFragmentsOnLines
-                emptyLine
-                (addLastFragment f :: accLines)
-                (fNext :: restLFragments)
+                restFragments
 
 
 emptyLine : Line
