@@ -170,10 +170,20 @@ fragmentsIntoLines accLine accLines fragments =
                 |> List.reverse
 
         (Newline hl) :: restFragments ->
-            fragmentsIntoLines
-                { emptyLine | highlight = hl |> Maybe.map toInternalHighlight }
-                (reverseLineFragments accLine :: accLines)
-                restFragments
+            if accLine == emptyLine && accLines == [] then
+                -- This is the first fragment, and it's a `Newline`. We skip
+                -- creating the new `Line` and instead update the current
+                -- (first) line's highlight value.
+                fragmentsIntoLines
+                    { accLine | highlight = hl |> Maybe.map toInternalHighlight }
+                    accLines
+                    restFragments
+
+            else
+                fragmentsIntoLines
+                    { emptyLine | highlight = hl |> Maybe.map toInternalHighlight }
+                    (reverseLineFragments accLine :: accLines)
+                    restFragments
 
         (Fragment lf) :: restFragments ->
             fragmentsIntoLines
