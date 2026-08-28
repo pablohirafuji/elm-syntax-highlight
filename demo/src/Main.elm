@@ -81,7 +81,7 @@ initLanguagesModel =
         , ( "Kotlin", initLanguageModel kotlinExample )
         , ( "Go", initLanguageModel goExample )
         , ( "NoLang", initLanguageModel noLangExample )
-        , ( "Custom parser", initLanguageModel customExample )
+        , ( "Custom syntax", initLanguageModel customExample )
         ]
 
 
@@ -532,7 +532,6 @@ view model =
             , viewLanguage "Javascript" toHtmlJavascript model
             , viewLanguage "Xml" toHtmlXml model
             , viewLanguage "Css" toHtmlCss model
-            , viewLanguage "Css (custom)" toHtmlCss model
             , viewLanguage "Python" toHtmlPython model
             , viewLanguage "Sql" toHtmlSql model
             , viewLanguage "Json" toHtmlJson model
@@ -540,7 +539,7 @@ view model =
             , viewLanguage "Kotlin" toHtmlKotlin model
             , viewLanguage "Go" toHtmlGo model
             , viewLanguage "NoLang" toHtmlNoLang model
-            , viewLanguage "Custom parser" toHtmlCustom model
+            , viewLanguage "Custom syntax" toHtmlCustom model
             , viewOptions model
             ]
         ]
@@ -664,11 +663,6 @@ toHtmlCss =
     toHtml SH.css
 
 
-toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
-toHtmlCustom =
-    toHtml CustomSyntax.syntax
-
-
 toHtmlPython : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlPython =
     toHtml SH.python
@@ -702,6 +696,11 @@ toHtmlGo =
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNoLang =
     toHtml SH.noLang
+
+
+toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlCustom =
+    toHtml CustomSyntax.syntax
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg
