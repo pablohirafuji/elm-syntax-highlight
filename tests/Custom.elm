@@ -14,37 +14,48 @@ suite : Test
 suite =
     describe "Custom Syntax Test Suite"
         [ testFromParsedFragments "First line highlighting doesn't add an extra empty line"
-            [ Custom.newline (Just Add)
-            , Custom.fragment "code"
-            ]
-            [ { fragments = [ { emptyFragment | text = "code" } ]
-              , highlight = Just Line.Add
-              }
-            ]
+            { givenParserOutput =
+                [ Custom.newline (Just Add)
+                , Custom.fragment "code"
+                ]
+            , expectHCodeLines =
+                [ { fragments = [ { emptyFragment | text = "code" } ]
+                  , highlight = Just Line.Add
+                  }
+                ]
+            }
         , testFromParsedFragments "Doesn't leave empty fragments in empty lines"
-            [ Custom.fragment "before\n\nafter" ]
-            [ { emptyLine | fragments = [ { emptyFragment | text = "before" } ] }
-            , { emptyLine | fragments = [] }
-            , { emptyLine | fragments = [ { emptyFragment | text = "after" } ] }
-            ]
+            { givenParserOutput =
+                [ Custom.fragment "before\n\nafter" ]
+            , expectHCodeLines =
+                [ { emptyLine | fragments = [ { emptyFragment | text = "before" } ] }
+                , { emptyLine | fragments = [] }
+                , { emptyLine | fragments = [ { emptyFragment | text = "after" } ] }
+                ]
+            }
         ]
 
 
-testFromParsedFragments : String -> List Custom.Fragment -> List Line -> Test
-testFromParsedFragments testName fragments resultMatchesLines =
+{-| Makes a test by constructing a parser that simply outputs the provided
+`givenParserOutput` fragments, and checks the output of `fromParser` against
+`expectedHCodeLines`.
+-}
+testFromParsedFragments :
+    String
+    ->
+        { givenParserOutput : List Custom.Fragment
+        , expectHCodeLines : List Line
+        }
+    -> Test
+testFromParsedFragments testName config =
     test testName <|
         \_ ->
-            case fromParsedFragments fragments of
+            case Custom.fromParser (Parser.succeed config.givenParserOutput) "" of
                 Ok hCode ->
-                    equal hCode (SyntaxHighlight.toHCode resultMatchesLines)
+                    equal hCode (SyntaxHighlight.toHCode config.expectHCodeLines)
 
                 _ ->
-                    fail "`fromParsedFragments` returned an unexpected value"
-
-
-fromParsedFragments : List Custom.Fragment -> Result (List Parser.DeadEnd) HCode
-fromParsedFragments fragments =
-    Custom.fromParser (Parser.succeed fragments) ""
+                    fail "`fromParser` returned an unexpected value"
 
 
 emptyLine : Line
