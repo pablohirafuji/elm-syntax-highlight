@@ -22,7 +22,6 @@ module SyntaxHighlight.Custom exposing
 
 import Parser exposing (Parser)
 import SyntaxHighlight exposing (Highlight(..))
-import SyntaxHighlight.Language.Type exposing (HCode(..))
 import SyntaxHighlight.Line as Line exposing (Line)
 import SyntaxHighlight.Style as Style
 

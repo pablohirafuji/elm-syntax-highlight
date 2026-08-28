@@ -1,6 +1,6 @@
 module Custom exposing (suite)
 
-import Expect exposing (Expectation, equal, fail)
+import Expect exposing (equal, fail)
 import Parser
 import Result exposing (Result(..))
 import SyntaxHighlight exposing (HCode, Highlight(..))

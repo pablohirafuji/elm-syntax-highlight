@@ -1,10 +1,4 @@
-module SyntaxHighlight.Language.Type exposing (HCode(..), Syntax(..), Token)
-
-import SyntaxHighlight.Line exposing (Line)
-
-
-type HCode
-    = HCode (List Line)
+module SyntaxHighlight.Language.Type exposing (Syntax(..), Token)
 
 
 type alias Token a =
