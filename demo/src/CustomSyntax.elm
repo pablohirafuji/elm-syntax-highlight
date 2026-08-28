@@ -18,10 +18,10 @@ syntax =
     SH.fromParser parser
 
 
-parser : Parser (List SH.Line)
+parser : Parser (List SH.Fragment)
 parser =
     Parser.loop [] parserLoop
-        |> Parser.map tokensToLines
+        |> Parser.map (List.map tokenToFragment)
 
 
 parserLoop : List Token -> Parser (Parser.Step (List Token) (List Token))
@@ -34,44 +34,28 @@ parserLoop revTokens =
         ]
 
 
-tokensToLines : List Token -> List SH.Line
-tokensToLines tokens =
-    let
-        accumulateLines : Token -> ( List SH.Fragment, List SH.Line ) -> ( List SH.Fragment, List SH.Line )
-        accumulateLines token ( accFragmentsRev, linesRev ) =
-            let
-                addFragment text style =
-                    ( (SH.fragment text |> SH.setFragmentStyle style)
-                        :: accFragmentsRev
-                    , linesRev
-                    )
-            in
-            case token of
-                LineBreak ->
-                    ( []
-                    , SH.line (List.reverse accFragmentsRev) :: linesRev
-                    )
+tokenToFragment : Token -> SH.Fragment
+tokenToFragment token =
+    case token of
+        Number text ->
+            fragment text SH.style1
 
-                Number text ->
-                    addFragment text SH.style1
+        Operator text ->
+            fragment text SH.style3
 
-                Operator text ->
-                    addFragment text SH.style3
+        Parenthesis text ->
+            fragment text SH.style4
 
-                Parenthesis text ->
-                    addFragment text SH.style4
+        Other text ->
+            fragment text SH.styleDefault
 
-                Other text ->
-                    addFragment text SH.styleDefault
+        LineBreak ->
+            SH.lineBreak Nothing
 
-        ( lastLineFragmentsRev, otherLinesRev ) =
-            tokens
-                |> List.foldl accumulateLines ( [], [] )
 
-        lastLine =
-            SH.line (List.reverse lastLineFragmentsRev)
-    in
-    List.reverse (lastLine :: otherLinesRev)
+fragment : String -> SH.Style -> SH.Fragment
+fragment text style =
+    SH.fragment text |> SH.setFragmentStyle style
 
 
 
