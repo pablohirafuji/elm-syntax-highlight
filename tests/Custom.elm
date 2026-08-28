@@ -15,7 +15,7 @@ suite : Test
 suite =
     describe "Custom Syntax Test Suite"
         [ testFromParsedFragments "First line highlighting doesn't add an extra empty line"
-            [ Custom.lineBreak (Just Add)
+            [ Custom.newline (Just Add)
             , Custom.fragment "code"
             ]
             (equal

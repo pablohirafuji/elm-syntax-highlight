@@ -1,4 +1,4 @@
-module SyntaxHighlight.Custom exposing (Fragment, Style, fragment, fromParser, lineBreak, setFragmentClasses, setFragmentStyle, style1, style2, style3, style4, style5, style6, style7, styleComment, styleDefault)
+module SyntaxHighlight.Custom exposing (Fragment, Style, fragment, fromParser, newline, setFragmentClasses, setFragmentStyle, style1, style2, style3, style4, style5, style6, style7, styleComment, styleDefault)
 
 {-| -}
 
@@ -18,7 +18,7 @@ fromParser parser code =
         |> Result.map
             (\fragments ->
                 fragments
-                    |> List.concatMap splitFragmentOnLineBreaks
+                    |> List.concatMap lineBreaksAsFragments
                     |> fragmentsIntoLines emptyLine []
                     |> HCode
             )
@@ -33,7 +33,7 @@ the text being styled, the style and additional class to be applied.
 -}
 type Fragment
     = Fragment Line.Fragment
-    | LineBreak (Maybe Highlight)
+    | Newline (Maybe Highlight)
 
 
 {-| Constructs a `Fragment` value out of a `String`, which is one part of a
@@ -48,22 +48,22 @@ fragment text =
         }
 
 
-lineBreak : Maybe Highlight -> Fragment
-lineBreak highlightM =
-    LineBreak highlightM
+newline : Maybe Highlight -> Fragment
+newline hl =
+    Newline hl
 
 
 {-| Sets a specific style to a `Fragment`, which gives it a different color
 depending on the theme used.
 -}
 setFragmentStyle : Style -> Fragment -> Fragment
-setFragmentStyle (Style style) fragment_ =
-    case fragment_ of
-        Fragment f ->
-            Fragment { f | requiredStyle = style }
+setFragmentStyle (Style style) f =
+    case f of
+        Fragment lf ->
+            Fragment { lf | requiredStyle = style }
 
-        LineBreak _ ->
-            fragment_
+        Newline _ ->
+            f
 
 
 {-| You can optionally use this function to give a `Fragment` one or more custom
@@ -71,13 +71,13 @@ CSS classes (separated by spaces), if you want more control over how you style
 your custom syntax.
 -}
 setFragmentClasses : String -> Fragment -> Fragment
-setFragmentClasses classes fragment_ =
-    case fragment_ of
-        Fragment f ->
-            Fragment { f | additionalClass = classes }
+setFragmentClasses classes f =
+    case f of
+        Fragment lf ->
+            Fragment { lf | additionalClass = classes }
 
-        LineBreak _ ->
-            fragment_
+        Newline _ ->
+            f
 
 
 
@@ -137,16 +137,16 @@ style7 =
 -- INTERNAL
 
 
-splitFragmentOnLineBreaks : Fragment -> List Fragment
-splitFragmentOnLineBreaks fragment_ =
-    case fragment_ of
-        Fragment f ->
-            String.split "\n" f.text
-                |> List.map (\text -> Fragment { f | text = text })
-                |> List.intersperse (LineBreak Nothing)
+lineBreaksAsFragments : Fragment -> List Fragment
+lineBreaksAsFragments f =
+    case f of
+        Fragment lf ->
+            String.split "\n" lf.text
+                |> List.map (\text -> Fragment { lf | text = text })
+                |> List.intersperse (Newline Nothing)
 
-        LineBreak _ ->
-            [ fragment_ ]
+        Newline _ ->
+            [ f ]
 
 
 fragmentsIntoLines : Line -> List Line -> List Fragment -> List Line
@@ -156,15 +156,15 @@ fragmentsIntoLines accLine accLines fragments =
             (reverseLineFragments accLine :: accLines)
                 |> List.reverse
 
-        (LineBreak hl) :: restFragments ->
+        (Newline hl) :: restFragments ->
             fragmentsIntoLines
                 { emptyLine | highlight = hl |> Maybe.map toInternalHighlight }
                 (reverseLineFragments accLine :: accLines)
                 restFragments
 
-        (Fragment f) :: restFragments ->
+        (Fragment lf) :: restFragments ->
             fragmentsIntoLines
-                { accLine | fragments = f :: accLine.fragments }
+                { accLine | fragments = lf :: accLine.fragments }
                 accLines
                 restFragments
 
