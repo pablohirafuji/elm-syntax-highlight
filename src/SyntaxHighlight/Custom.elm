@@ -11,14 +11,14 @@ module SyntaxHighlight.Custom exposing
 @docs fromParser
 
 
-## Fragment
+## Fragments
 
 @docs Fragment
 
 @docs fragment, newline, setFragmentStyle, setFragmentClasses
 
 
-## Style
+## Styles
 
 @docs Style
 
@@ -51,7 +51,7 @@ also check the [custom syntax example][example] in the repo.
     viewHighlightedCustomSyntax code =
         code
             |> Custom.fromParser parser
-            |> Result.map (SyntaxHighlighting.toBlockHtml Nothing)
+            |> Result.map (SyntaxHighlight.toBlockHtml Nothing)
             |> Result.withDefault (Html.text "[Parser error]")
 
     parser : Parser (List Custom.Fragment)
@@ -98,8 +98,8 @@ type Fragment
 
 
 {-| Constructs a `Fragment` value out of a part of the code you're parsing.
-Typically should represent one syntactic unit in the code, such as a
-string, an identifier, a keyword, an operator, etc. You can add styling
+Typically should represent one syntactic unit in the code, such as a string,
+an identifier, a keyword, an operator, whitespace, etc. You can add styling
 details to this `Fragment` using [`setFragmentStyle`](#setFragmentStyle) and
 [`setFragmentClasses`](#setFragmentClasses).
 
