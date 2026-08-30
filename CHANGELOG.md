@@ -1,5 +1,9 @@
 # Changelog
 
+### 3.8.0
+
+Add custom syntax API (#31). Thanks @agj!
+
 ### 3.7.0
 
 Add Go language support (#28). Thanks @ahmedakef!
