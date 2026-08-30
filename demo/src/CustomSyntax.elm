@@ -2,7 +2,7 @@ module CustomSyntax exposing (syntax)
 
 import Parser exposing ((|.), (|=), Parser)
 import SyntaxHighlight exposing (HCode)
-import SyntaxHighlight.Custom as SH
+import SyntaxHighlight.Custom as Custom exposing (Fragment, Style)
 
 
 type Token
@@ -14,10 +14,10 @@ type Token
 
 syntax : String -> Result (List Parser.DeadEnd) HCode
 syntax =
-    SH.fromParser parser
+    Custom.fromParser parser
 
 
-parser : Parser (List SH.Fragment)
+parser : Parser (List Fragment)
 parser =
     Parser.loop [] parserLoop
         |> Parser.map (List.map tokenToFragment)
@@ -33,25 +33,25 @@ parserLoop revTokens =
         ]
 
 
-tokenToFragment : Token -> SH.Fragment
+tokenToFragment : Token -> Fragment
 tokenToFragment token =
     case token of
         Number text ->
-            fragment text SH.style1
+            fragment text Custom.style1
 
         Operator text ->
-            fragment text SH.style3
+            fragment text Custom.style3
 
         Parenthesis text ->
-            fragment text SH.style4
+            fragment text Custom.style4
 
         Other text ->
-            fragment text SH.styleDefault
+            fragment text Custom.styleDefault
 
 
-fragment : String -> SH.Style -> SH.Fragment
+fragment : String -> Style -> Fragment
 fragment text style =
-    SH.fragment text |> SH.setFragmentStyle style
+    Custom.fragment text |> Custom.setFragmentStyle style
 
 
 
