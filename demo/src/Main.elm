@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Events exposing (onAnimationFrame)
+import CustomSyntax
 import Dict exposing (Dict)
 import Html exposing (Html, a, button, code, div, h1, input, label, li, main_, node, option, p, pre, select, small, text, textarea, ul)
 import Html.Attributes exposing (checked, class, classList, href, id, placeholder, selected, spellcheck, style, type_, value)
@@ -80,6 +81,7 @@ initLanguagesModel =
         , ( "Kotlin", initLanguageModel kotlinExample )
         , ( "Go", initLanguageModel goExample )
         , ( "NoLang", initLanguageModel noLangExample )
+        , ( "Custom syntax", initLanguageModel customExample )
         ]
 
 
@@ -292,6 +294,7 @@ suspend fun main(args: Array<String>) {
 }
 """
 
+
 goExample : String
 goExample =
     """package main
@@ -346,6 +349,14 @@ func appleTree(nrOfApples: Int) : List<Apple>{
 while True {
     print(toString(42/0))
 }
+"""
+
+
+customExample : String
+customExample =
+    """1 + 2
+256 - (5 / 6)
+8 * 8
 """
 
 
@@ -528,6 +539,7 @@ view model =
             , viewLanguage "Kotlin" toHtmlKotlin model
             , viewLanguage "Go" toHtmlGo model
             , viewLanguage "NoLang" toHtmlNoLang model
+            , viewLanguage "Custom syntax" toHtmlCustom model
             , viewOptions model
             ]
         ]
@@ -680,9 +692,15 @@ toHtmlGo : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlGo =
     toHtml SH.go
 
+
 toHtmlNoLang : Maybe Int -> String -> HighlightModel -> Html Msg
 toHtmlNoLang =
     toHtml SH.noLang
+
+
+toHtmlCustom : Maybe Int -> String -> HighlightModel -> Html Msg
+toHtmlCustom =
+    toHtml CustomSyntax.syntax
 
 
 toHtml : (String -> Result (List Parser.DeadEnd) SH.HCode) -> Maybe Int -> String -> HighlightModel -> Html Msg

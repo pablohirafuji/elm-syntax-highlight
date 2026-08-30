@@ -6,6 +6,7 @@ module SyntaxHighlight exposing
     , Theme, useTheme, monokai, gitHub, oneDark
     , ConsoleOptions, toConsole
     , CustomTransform, toCustom
+    , toHCode
     )
 
 {-| Syntax highlighting in Elm.
@@ -44,6 +45,11 @@ Error while parsing should not happen. If it happens, please [open an issue](htt
 
 @docs CustomTransform, toCustom
 
+
+## Internal
+
+@docs toHCode
+
 -}
 
 import Html exposing (Html, text)
@@ -59,7 +65,7 @@ import SyntaxHighlight.Language.NoLang as NoLang
 import SyntaxHighlight.Language.Python as Python
 import SyntaxHighlight.Language.Sql as Sql
 import SyntaxHighlight.Language.Xml as Xml
-import SyntaxHighlight.Line as Line exposing (Highlight, Line)
+import SyntaxHighlight.Line as Line exposing (Line)
 import SyntaxHighlight.Style as Style
 import SyntaxHighlight.Theme as Theme
 import SyntaxHighlight.View as View
@@ -442,3 +448,10 @@ toCustomFragment options { text, requiredStyle, additionalClass } =
 
         Style.Style7 ->
             options.style7 text
+
+
+{-| This function is exposed for internal use only.
+-}
+toHCode : List Line -> HCode
+toHCode lines =
+    HCode lines

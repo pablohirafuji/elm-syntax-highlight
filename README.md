@@ -17,6 +17,8 @@ Syntax highlighting in Elm. [Demo](https://pablohirafuji.github.io/elm-syntax-hi
 
 And there is a `noLang` generic option for when the language is unknown (Thanks [@Anton-4](https://github.com/Anton-4)!).
 
+You can also write a custom syntax using your own parser, by using the API provided in the `SyntaxHighlight.Custom` module.
+
 ## Themes
 
 You can define the theme either by copying and pasting the theme styles into your `.css` file or using the `useTheme` helper.
