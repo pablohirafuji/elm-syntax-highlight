@@ -362,10 +362,10 @@ toConsole options =
 {-| Custom transform options.
 The common uses of the styles are the following:
 
-  - **noOperation**: No operation (aplly to the whole line)
-  - **highlight**: Highlight style (aplly to the whole line)
-  - **addition**: Addition style (aplly to the whole line)
-  - **deletion**: Deletion style (aplly to the whole line)
+  - **noOperation**: No operation (apply to the whole line)
+  - **highlight**: Highlight style (apply to the whole line)
+  - **addition**: Addition style (apply to the whole line)
+  - **deletion**: Deletion style (apply to the whole line)
   - **default**: Default style
   - **comment**: Comment
   - **style1**: Number
